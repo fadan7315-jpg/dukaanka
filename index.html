@@ -35,7 +35,7 @@ nav button.on{color:#fff;background:#08393f}nav b{display:block;font-size:20px;f
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import{getAuth,onAuthStateChanged,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,signOut}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import{getFirestore,doc,getDoc,setDoc}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import{getFirestore,doc,getDoc,setDoc,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 const cfg={apiKey:"AIzaSyBPUUlqzfCLVpU9E1hHD3pXvvbJtePcqFI",authDomain:"dukaanka-e8018.firebaseapp.com",projectId:"dukaanka-e8018",storageBucket:"dukaanka-e8018.firebasestorage.app",messagingSenderId:"408649877811",appId:"1:408649877811:web:3b2713fcc246463d595646"};
 const fb=initializeApp(cfg),auth=getAuth(fb),db=getFirestore(fb);
 const $=s=>document.querySelector(s),v=id=>$("#"+id).value,n=id=>parseFloat(v(id))||0;
@@ -66,10 +66,23 @@ if(d.exists()&&d.data().json){const x=d.data();if((x.t||0)>lt){S={...empty(),...
 else if(lt)save();else setSt("Dukaan cusub")}catch(e){setSt("⚠ Internet ma jiro")}
 if(CUR!==id)return;const s=SH.find(x=>x.id===id);if(s&&!s.name&&S.shop){s.name=S.shop;saveMeta()}
 render()}
+let SUB={end:0,paid:false,unk:true};
+const act=()=>SUB.unk||SUB.end>Date.now(),left=()=>Math.max(0,Math.ceil((SUB.end-Date.now())/864e5));
+async function loadSub(){const k="dks_"+U.uid;
+try{const r=doc(db,"subs",U.uid);let d=await getDoc(r);
+if(!d.exists()){await setDoc(r,{start:serverTimestamp()});d=await getDoc(r)}
+const x=d.data(),s=x.start&&x.start.toMillis?x.start.toMillis():Date.now(),p=x.paidUntil&&x.paidUntil.toMillis?x.paidUntil.toMillis():0;
+SUB={end:Math.max(s+864e6,p),paid:p>Date.now(),unk:false};localStorage.setItem(k,JSON.stringify(SUB))}
+catch(e){let c=null;try{c=JSON.parse(localStorage.getItem(k))}catch(_){}SUB=c?{...c,unk:false}:{end:0,paid:false,unk:true}}
+render()}
+const bn=()=>{if(SUB.unk)return"";
+if(!act())return`<div class="card" style="border:2px solid var(--bad)"><h3 style="color:var(--bad)">Waqtigaagii bilaashka ah wuu dhammaaday</h3><p style="margin:0 0 8px">Xogtaada way ammaan tahay oo waad arki kartaa. Si aad xog cusub u keydiso, bixi <b>$7 bishii</b>.</p><div class="row"><span>Lambarka lacagta</span><b>618598555</b></div><button onclick="A.pay()">Ku soo wac WhatsApp</button><button class="g" onclick="A.chk()">Waan bixiyay, hubi</button></div>`;
+const d=left();if(SUB.paid&&d>5)return"";
+return`<div class="alert" style="background:var(--soft);color:var(--ink)">${SUB.paid?"Akoonka waa la bixiyay · "+d+" maalmood ayaa hartay":"Tijaabo bilaash · "+d+" maalmood ayaa hartay"}</div>`};
 onAuthStateChanged(auth,async u=>{U=u;ready=true;if(!u){S=empty();return render()}
 SH=[{id:"main",name:""}];try{const l=JSON.parse(localStorage.getItem("dkm_"+u.uid));if(Array.isArray(l)&&l.length)SH=l}catch(e){}
 let c=localStorage.getItem("dkc_"+u.uid)||"main";if(!SH.some(x=>x.id===c))c="main";
-loadShop(c);
+SUB={end:0,paid:false,unk:true};loadShop(c);loadSub();
 try{const d=await getDoc(doc(db,"users",u.uid));if(d.exists()&&d.data().meta){const m=JSON.parse(d.data().meta);if(Array.isArray(m)&&m.length){SH=[...m,...SH.filter(x=>!m.some(y=>y.id===x.id))];localStorage.setItem("dkm_"+u.uid,JSON.stringify(SH));render()}}}catch(e){}});
 const A={
 async go(){err="";const e=v("em").trim(),p=v("pw");if(!e||!p){err="Geli email iyo password";return render()}
@@ -102,6 +115,7 @@ wa(){A.cap();if(!INV.it.length)return;const d=INV.t.replace(/\D/g,"");window.ope
 pr(){A.cap();if(!INV.it.length)return;const tot=sum(INV.it,x=>x.q*x.p);
 $("#pv").innerHTML=`<h2 style="margin:0">${esc(S.shop||"Dukaanka")}</h2><p>Rasiid #${S.no||1} · ${today()}${INV.c?"<br>Macmiil: "+esc(INV.c):""}</p><table style="width:100%;border-collapse:collapse"><tr style="text-align:left;border-bottom:2px solid #000"><th>Alaab</th><th>Tirada</th><th>Qiimaha</th><th style="text-align:right">Wadar</th></tr>${INV.it.map(x=>`<tr style="border-bottom:1px solid #ccc"><td>${esc(x.item)}</td><td>${x.q}</td><td>${m(x.p)}</td><td style="text-align:right">${m(x.q*x.p)}</td></tr>`).join("")}</table><h3 style="text-align:right;color:#000">Wadarta: ${m(tot)}</h3><p>Mahadsanid!</p>`;window.print();A.done()}});
 Object.assign(A,{
+pay(){window.open("https://wa.me/252618598555?text="+encodeURIComponent("Salaan, waxaan rabaa inaan bixiyo Dukaanka ($7 bishii). Email: "+U.email),"_blank")},chk(){loadSub()},
 sh(val){flush();if(val==="__new"){const nm=(prompt("Magaca dukaanka cusub?")||"").trim();if(!nm)return render();const id="s"+Date.now().toString(36);SH.push({id,name:nm});saveMeta();S={...empty(),shop:nm};CUR=id;save();loadShop(id)}else if(val!==CUR)loadShop(val)}});
 Object.assign(window,{A});
 const T=[["dash","📊","Kooban"],["sales","🛒","Iibka"],["stock","📦","Keyd"],["exp","💸","Qarash"],["debt","📒","Deyn"],["inv","🧾","Rasiid"],["me","👤","Aniga"]];
@@ -130,6 +144,6 @@ me(){return`<div class="card"><h3>Dukaanka</h3><input id="sn" placeholder="Magac
 function render(){if(!ready)return;
 if(!U){app.innerHTML=`<div class="au"><h1>Dukaanka</h1><p>Xisaabta dukaankaaga, meel kasta ka hel.</p><input id="em" type="email" placeholder="Email" autocomplete="email"><input id="pw" type="password" placeholder="Password" autocomplete="current-password"><div class="err">${esc(err)}</div>
 <button onclick="A.go()">${mode==="up"?"Samee akoon":"Gal"}</button><button class="g" onclick="A.google()">Ku gal Google</button><button class="lnk" onclick="A.sw()">${mode==="up"?"Akoon ayaan leeyahay":"Akoon cusub samee"}</button>${mode==="in"?`<button class="lnk" onclick="A.reset()">Password-ka ma xasuusnid</button>`:""}</div>`;return}
-app.innerHTML=`<header><div style="flex:1;min-width:0"><select onchange="A.sh(this.value)" style="background:transparent;color:#fff;border:0;font-size:19px;font-weight:700;padding:0;margin:0;width:100%">${SH.map(x=>`<option style="color:#000" value="${x.id}" ${x.id===CUR?"selected":""}>${esc(x.id===CUR?(S.shop||x.name||"Dukaanka"):(x.name||"Dukaan"))}</option>`).join("")}<option style="color:#000" value="__new">➕ Dukaan cusub</option></select><small id="st">${esc(st)}</small></div></header><main>${V[tab]()}</main><nav>${T.map(([k,i,l])=>`<button class="${k===tab?"on":""}" onclick="A.tab('${k}')"><b>${i}</b>${l}</button>`).join("")}</nav>`}
+app.innerHTML=`<header><div style="flex:1;min-width:0"><select onchange="A.sh(this.value)" style="background:transparent;color:#fff;border:0;font-size:19px;font-weight:700;padding:0;margin:0;width:100%">${SH.map(x=>`<option style="color:#000" value="${x.id}" ${x.id===CUR?"selected":""}>${esc(x.id===CUR?(S.shop||x.name||"Dukaanka"):(x.name||"Dukaan"))}</option>`).join("")}<option style="color:#000" value="__new">➕ Dukaan cusub</option></select><small id="st">${esc(st)}</small></div></header><main>${bn()}${V[act()||tab==="dash"||tab==="me"?tab:"dash"]()}</main><nav>${T.map(([k,i,l])=>`<button class="${k===tab?"on":""}" onclick="A.tab('${k}')"><b>${i}</b>${l}</button>`).join("")}</nav>`}
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js");
 </script></body></html>
