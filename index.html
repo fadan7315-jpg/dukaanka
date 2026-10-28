@@ -49,15 +49,28 @@ const app=$("#app");
 const sold=i=>sum(S.sales.filter(x=>x.item.toLowerCase()===i.toLowerCase()),x=>x.q),rest=i=>i.in-sold(i.item);
 const AE={"auth/invalid-credential":"Email ama password waa khalad","auth/email-already-in-use":"Email-kan horey ayaa loo diiwaangeliyay","auth/weak-password":"Password-ku waa inuu ahaado 6 xaraf ama ka badan","auth/invalid-email":"Email-ku sax ma aha","auth/popup-closed-by-user":"Gelidda waa la joojiyay","auth/network-request-failed":"Internet ma jiro"};
 function setSt(t){st=t;const e=$("#st");if(e)e.textContent=t}
-function save(){if(!U)return;const t=Date.now();localStorage.setItem("dk_"+U.uid,JSON.stringify(S));localStorage.setItem("dkt_"+U.uid,t);setSt("Waa la keydinayaa…");clearTimeout(tm);
-tm=setTimeout(()=>setDoc(doc(db,"users",U.uid),{json:JSON.stringify(S),t}).then(()=>setSt("☁ La keydiyay "+new Date().toLocaleTimeString())).catch(()=>setSt("⚠ Internet ma jiro, taleefanka ayaa ku kaydsan")),700)}
+let SH=[{id:"main",name:""}],CUR="main",pend=null,pid="";
+const kk=(id,p)=>p+U.uid+(id==="main"?"":"_"+id);
+const sref=id=>id==="main"?doc(db,"users",U.uid):doc(db,"users",U.uid,"shops",id);
+const saveMeta=()=>{localStorage.setItem("dkm_"+U.uid,JSON.stringify(SH));setDoc(doc(db,"users",U.uid),{meta:JSON.stringify(SH)},{merge:true}).catch(()=>{})};
+function flush(){clearTimeout(tm);if(pend){const f=pend;pend=null;f()}}
+function save(){if(!U)return;const id=CUR,t=Date.now(),js=JSON.stringify(S);if(pend&&pid!==id)flush();
+localStorage.setItem(kk(id,"dk_"),js);localStorage.setItem(kk(id,"dkt_"),t);setSt("Waa la keydinayaa…");clearTimeout(tm);pid=id;
+pend=()=>setDoc(sref(id),{json:js,t},{merge:true}).then(()=>setSt("☁ La keydiyay "+new Date().toLocaleTimeString())).catch(()=>setSt("⚠ Internet ma jiro, taleefanka ayaa ku kaydsan"));
+tm=setTimeout(flush,700)}
+async function loadShop(id){CUR=id;INV={c:"",t:"",it:[]};localStorage.setItem("dkc_"+U.uid,id);
+try{S={...empty(),...JSON.parse(localStorage.getItem(kk(id,"dk_"))||"{}")}}catch(e){S=empty()}
+tab="dash";render();
+try{const d=await getDoc(sref(id)),lt=+localStorage.getItem(kk(id,"dkt_"))||0;if(CUR!==id)return;
+if(d.exists()&&d.data().json){const x=d.data();if((x.t||0)>lt){S={...empty(),...JSON.parse(x.json)};localStorage.setItem(kk(id,"dk_"),x.json);localStorage.setItem(kk(id,"dkt_"),x.t)}else if(lt>(x.t||0))save();else setSt("☁ Waa la isku waafajiyay")}
+else if(lt)save();else setSt("Dukaan cusub")}catch(e){setSt("⚠ Internet ma jiro")}
+if(CUR!==id)return;const s=SH.find(x=>x.id===id);if(s&&!s.name&&S.shop){s.name=S.shop;saveMeta()}
+render()}
 onAuthStateChanged(auth,async u=>{U=u;ready=true;if(!u){S=empty();return render()}
-try{S={...empty(),...JSON.parse(localStorage.getItem("dk_"+u.uid)||"{}")}}catch(e){}
-render();
-try{const d=await getDoc(doc(db,"users",u.uid)),lt=+localStorage.getItem("dkt_"+u.uid)||0;
-if(d.exists()){const x=d.data();if((x.t||0)>lt){S={...empty(),...JSON.parse(x.json)};localStorage.setItem("dk_"+u.uid,x.json);localStorage.setItem("dkt_"+u.uid,x.t)}else if(lt>(x.t||0))save();else setSt("☁ Waa la isku waafajiyay")}
-else if(lt)save();else setSt("Akoon cusub")}catch(e){setSt("⚠ Internet ma jiro")}
-render()});
+SH=[{id:"main",name:""}];try{const l=JSON.parse(localStorage.getItem("dkm_"+u.uid));if(Array.isArray(l)&&l.length)SH=l}catch(e){}
+let c=localStorage.getItem("dkc_"+u.uid)||"main";if(!SH.some(x=>x.id===c))c="main";
+loadShop(c);
+try{const d=await getDoc(doc(db,"users",u.uid));if(d.exists()&&d.data().meta){const m=JSON.parse(d.data().meta);if(Array.isArray(m)&&m.length){SH=[...m,...SH.filter(x=>!m.some(y=>y.id===x.id))];localStorage.setItem("dkm_"+u.uid,JSON.stringify(SH));render()}}}catch(e){}});
 const A={
 async go(){err="";const e=v("em").trim(),p=v("pw");if(!e||!p){err="Geli email iyo password";return render()}
 try{mode==="up"?await createUserWithEmailAndPassword(auth,e,p):await signInWithEmailAndPassword(auth,e,p)}catch(x){err=AE[x.code]||x.code;render()}},
@@ -75,7 +88,7 @@ stock(){const item=v("ki").trim(),q=n("kq");if(!item||q<=0)return alert("Geli ma
 exp(){const a=n("ea");if(a<=0)return alert("Geli qiimaha");S.exp.push({d:today(),cat:v("ec"),note:v("en"),a});save();render()},
 debt(){const a=n("da"),nm=v("dn").trim();if(a<=0||!nm)return alert("Geli magaca iyo qaddarka");S.debts.push({d:today(),nm,tel:v("dt"),a,paid:false});save();render()},
 paid(i){S.debts[i].paid=!S.debts[i].paid;save();render()},
-prof(){S.shop=v("sn").trim();S.lim=n("sl")||5;save();render()},
+prof(){S.shop=v("sn").trim();S.lim=n("sl")||5;const s=SH.find(x=>x.id===CUR);if(s){s.name=S.shop;saveMeta()}save();render()},
 dl(){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:"application/json"}));a.download="dukaan-backup-"+today()+".json";a.click()},
 rf(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(!Array.isArray(j.sales))throw 0;S={...empty(),...j};save();render();alert("Waa la soo celiyay")}catch(e){alert("Faylkan ma saxna")}};r.readAsText(f)}};
 Object.assign(A,{
@@ -88,6 +101,8 @@ done(){S.no=(S.no||1)+1;save()},
 wa(){A.cap();if(!INV.it.length)return;const d=INV.t.replace(/\D/g,"");window.open((d.length>=9?"https://wa.me/"+d:"https://wa.me/")+"?text="+encodeURIComponent(A.txt()),"_blank");A.done()},
 pr(){A.cap();if(!INV.it.length)return;const tot=sum(INV.it,x=>x.q*x.p);
 $("#pv").innerHTML=`<h2 style="margin:0">${esc(S.shop||"Dukaanka")}</h2><p>Rasiid #${S.no||1} · ${today()}${INV.c?"<br>Macmiil: "+esc(INV.c):""}</p><table style="width:100%;border-collapse:collapse"><tr style="text-align:left;border-bottom:2px solid #000"><th>Alaab</th><th>Tirada</th><th>Qiimaha</th><th style="text-align:right">Wadar</th></tr>${INV.it.map(x=>`<tr style="border-bottom:1px solid #ccc"><td>${esc(x.item)}</td><td>${x.q}</td><td>${m(x.p)}</td><td style="text-align:right">${m(x.q*x.p)}</td></tr>`).join("")}</table><h3 style="text-align:right;color:#000">Wadarta: ${m(tot)}</h3><p>Mahadsanid!</p>`;window.print();A.done()}});
+Object.assign(A,{
+sh(val){flush();if(val==="__new"){const nm=(prompt("Magaca dukaanka cusub?")||"").trim();if(!nm)return render();const id="s"+Date.now().toString(36);SH.push({id,name:nm});saveMeta();S={...empty(),shop:nm};CUR=id;save();loadShop(id)}else if(val!==CUR)loadShop(val)}});
 Object.assign(window,{A});
 const T=[["dash","📊","Kooban"],["sales","🛒","Iibka"],["stock","📦","Keyd"],["exp","💸","Qarash"],["debt","📒","Deyn"],["inv","🧾","Rasiid"],["me","👤","Aniga"]];
 const dl=()=>`<datalist id="dl">${S.stock.map(x=>`<option value="${esc(x.item)}">`).join("")}</datalist>`;
@@ -115,6 +130,6 @@ me(){return`<div class="card"><h3>Dukaanka</h3><input id="sn" placeholder="Magac
 function render(){if(!ready)return;
 if(!U){app.innerHTML=`<div class="au"><h1>Dukaanka</h1><p>Xisaabta dukaankaaga, meel kasta ka hel.</p><input id="em" type="email" placeholder="Email" autocomplete="email"><input id="pw" type="password" placeholder="Password" autocomplete="current-password"><div class="err">${esc(err)}</div>
 <button onclick="A.go()">${mode==="up"?"Samee akoon":"Gal"}</button><button class="g" onclick="A.google()">Ku gal Google</button><button class="lnk" onclick="A.sw()">${mode==="up"?"Akoon ayaan leeyahay":"Akoon cusub samee"}</button>${mode==="in"?`<button class="lnk" onclick="A.reset()">Password-ka ma xasuusnid</button>`:""}</div>`;return}
-app.innerHTML=`<header><div><b>${esc(S.shop||"Dukaanka")}</b><small id="st">${esc(st)}</small></div></header><main>${V[tab]()}</main><nav>${T.map(([k,i,l])=>`<button class="${k===tab?"on":""}" onclick="A.tab('${k}')"><b>${i}</b>${l}</button>`).join("")}</nav>`}
+app.innerHTML=`<header><div style="flex:1;min-width:0"><select onchange="A.sh(this.value)" style="background:transparent;color:#fff;border:0;font-size:19px;font-weight:700;padding:0;margin:0;width:100%">${SH.map(x=>`<option style="color:#000" value="${x.id}" ${x.id===CUR?"selected":""}>${esc(x.id===CUR?(S.shop||x.name||"Dukaanka"):(x.name||"Dukaan"))}</option>`).join("")}<option style="color:#000" value="__new">➕ Dukaan cusub</option></select><small id="st">${esc(st)}</small></div></header><main>${V[tab]()}</main><nav>${T.map(([k,i,l])=>`<button class="${k===tab?"on":""}" onclick="A.tab('${k}')"><b>${i}</b>${l}</button>`).join("")}</nav>`}
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js");
 </script></body></html>
