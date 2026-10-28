@@ -29,7 +29,9 @@ nav button{flex:1;background:none;border-radius:0;margin:0;padding:9px 0;font-si
 nav button.on{color:#fff;background:#08393f}nav b{display:block;font-size:20px;font-weight:400}
 .au{max-width:380px;margin:0 auto;padding:36px 18px}.au h1{margin:0 0 4px;font-size:34px;color:var(--pri)}.au p{color:var(--mut);margin:0 0 22px}
 .lnk{background:none;color:var(--pri);padding:8px;font-weight:600}.err{color:var(--bad);font-weight:600;min-height:20px}
-</style></head><body><div id="app"></div>
+#pv{display:none}
+@media print{body>*:not(#pv){display:none!important}#pv{display:block;color:#000;background:#fff;padding:18px;font-family:system-ui,sans-serif}body{background:#fff;padding:0}}
+</style></head><body><div id="app"></div><div id="pv"></div>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import{getAuth,onAuthStateChanged,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,signOut}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -42,7 +44,7 @@ const m=x=>(x<0?"-":"")+"$"+Math.abs(x).toLocaleString("en-US",{minimumFractionD
 const sum=(a,f)=>a.reduce((t,x)=>t+f(x),0),today=()=>new Date().toISOString().slice(0,10);
 const empty=()=>({sales:[],stock:[],exp:[],debts:[],shop:"",lim:5});
 const CATS=["Kiro","Koronto","Dhaqaale/Shaqaale","Transport","Wixii kale"];
-let U=null,S=empty(),tab="dash",mode="in",err="",st="",tm,ready=false;
+let INV={c:"",t:"",it:[]},U=null,S=empty(),tab="dash",mode="in",err="",st="",tm,ready=false;
 const app=$("#app");
 const sold=i=>sum(S.sales.filter(x=>x.item.toLowerCase()===i.toLowerCase()),x=>x.q),rest=i=>i.in-sold(i.item);
 const AE={"auth/invalid-credential":"Email ama password waa khalad","auth/email-already-in-use":"Email-kan horey ayaa loo diiwaangeliyay","auth/weak-password":"Password-ku waa inuu ahaado 6 xaraf ama ka badan","auth/invalid-email":"Email-ku sax ma aha","auth/popup-closed-by-user":"Gelidda waa la joojiyay","auth/network-request-failed":"Internet ma jiro"};
@@ -76,11 +78,23 @@ paid(i){S.debts[i].paid=!S.debts[i].paid;save();render()},
 prof(){S.shop=v("sn").trim();S.lim=n("sl")||5;save();render()},
 dl(){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:"application/json"}));a.download="dukaan-backup-"+today()+".json";a.click()},
 rf(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(!Array.isArray(j.sales))throw 0;S={...empty(),...j};save();render();alert("Waa la soo celiyay")}catch(e){alert("Faylkan ma saxna")}};r.readAsText(f)}};
+Object.assign(A,{
+cap(){INV.c=v("vc").trim();INV.t=v("vt").trim()},
+il(){A.cap();const item=v("vi").trim(),q=n("vq"),p=n("vp");if(!item||q<=0||p<=0)return alert("Geli alaabta, tirada iyo qiimaha");INV.it.push({item,q,p});render()},
+ir(i){A.cap();INV.it.splice(i,1);render()},
+ni(){if(confirm("Rasiid cusub bilow?")){INV={c:"",t:"",it:[]};render()}},
+txt(){const tot=sum(INV.it,x=>x.q*x.p);return`*${S.shop||"Dukaanka"}*\n🧾 Rasiid #${S.no||1}\nTaariikh: ${today()}\n`+(INV.c?`Macmiil: ${INV.c}\n`:"")+"------------\n"+INV.it.map(x=>`${x.item} × ${x.q} × ${m(x.p)} = ${m(x.q*x.p)}`).join("\n")+`\n------------\n*Wadarta: ${m(tot)}*\nMahadsanid!`},
+done(){S.no=(S.no||1)+1;save()},
+wa(){A.cap();if(!INV.it.length)return;const d=INV.t.replace(/\D/g,"");window.open((d.length>=9?"https://wa.me/"+d:"https://wa.me/")+"?text="+encodeURIComponent(A.txt()),"_blank");A.done()},
+pr(){A.cap();if(!INV.it.length)return;const tot=sum(INV.it,x=>x.q*x.p);
+$("#pv").innerHTML=`<h2 style="margin:0">${esc(S.shop||"Dukaanka")}</h2><p>Rasiid #${S.no||1} · ${today()}${INV.c?"<br>Macmiil: "+esc(INV.c):""}</p><table style="width:100%;border-collapse:collapse"><tr style="text-align:left;border-bottom:2px solid #000"><th>Alaab</th><th>Tirada</th><th>Qiimaha</th><th style="text-align:right">Wadar</th></tr>${INV.it.map(x=>`<tr style="border-bottom:1px solid #ccc"><td>${esc(x.item)}</td><td>${x.q}</td><td>${m(x.p)}</td><td style="text-align:right">${m(x.q*x.p)}</td></tr>`).join("")}</table><h3 style="text-align:right;color:#000">Wadarta: ${m(tot)}</h3><p>Mahadsanid!</p>`;window.print();A.done()}});
 Object.assign(window,{A});
-const T=[["dash","📊","Kooban"],["sales","🛒","Iibka"],["stock","📦","Keyd"],["exp","💸","Qarash"],["debt","📒","Deyn"],["me","👤","Aniga"]];
+const T=[["dash","📊","Kooban"],["sales","🛒","Iibka"],["stock","📦","Keyd"],["exp","💸","Qarash"],["debt","📒","Deyn"],["inv","🧾","Rasiid"],["me","👤","Aniga"]];
 const dl=()=>`<datalist id="dl">${S.stock.map(x=>`<option value="${esc(x.item)}">`).join("")}</datalist>`;
 const none=t=>`<div class="row"><small>${t}</small></div>`;
 const V={
+inv(){const tot=sum(INV.it,x=>x.q*x.p);return`${dl()}<div class="card"><h3>Rasiid cusub #${S.no||1}</h3><input id="vc" placeholder="Magaca macmiilka" value="${esc(INV.c)}"><input id="vt" type="tel" placeholder="WhatsApp (tusaale 252618…)" value="${esc(INV.t)}"><input id="vi" list="dl" placeholder="Magaca alaabta"><div class="r"><input id="vq" type="number" inputmode="decimal" placeholder="Tirada"><input id="vp" type="number" inputmode="decimal" placeholder="Qiimaha $"></div><button class="g" onclick="A.il()">+ Ku dar alaab</button></div>
+<div class="card"><h3>Alaabta rasiidka</h3>${INV.it.length?INV.it.map((x,i)=>`<div class="row"><div>${esc(x.item)}<small>${x.q} × ${m(x.p)}</small></div><div><b>${m(x.q*x.p)}</b> <button class="s g" onclick="A.ir(${i})">✕</button></div></div>`).join("")+`<div class="row"><b>Wadarta</b><b>${m(tot)}</b></div><button onclick="A.wa()">Ku dir WhatsApp</button><button class="g" onclick="A.pr()">Daabac / PDF</button><button class="lnk" onclick="A.ni()">Rasiid cusub</button>`:none("Ku dar alaabta rasiidka marka hore.")}</div>`},
 dash(){const tot=sum(S.sales,x=>x.p*x.q),gp=sum(S.sales,x=>(x.p-x.c)*x.q),ex=sum(S.exp,x=>x.a),un=sum(S.debts.filter(x=>!x.paid),x=>x.a),net=gp-ex,low=S.stock.filter(i=>rest(i)<=S.lim);
 return`${low.length?`<div class="alert">⚠ ${low.length} alaab way ka yar yihiin ${S.lim} — fur “Keyd”</div>`:""}
 <div class="hero"><small>Faa’iidada saafiga ah</small><div class="big">${m(net)}</div><small>Iibka ${m(tot)} − kharashka ${m(ex)}</small></div>
