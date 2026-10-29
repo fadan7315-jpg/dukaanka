@@ -176,3 +176,19 @@ new MutationObserver(add).observe(a,{childList:true});
 add();
 })();
 </script>
+<style>#plink{display:none!important}#plink2{text-align:center;font-size:13px;color:var(--mut);padding:6px 0 18px}#plink2 a{color:var(--pri);text-decoration:none;font-weight:600}</style>
+<script>
+(function(){
+var a=document.getElementById("app");
+function add(){
+var t=document.querySelector("main")||document.querySelector(".au");
+if(!t||t.querySelector("#plink2"))return;
+var d=document.createElement("div");
+d.id="plink2";
+d.innerHTML='<a href="privacy.html" target="_blank">Siyaasadda Asturnaanta</a> &middot; <a href="mailto:faysaladan091@gmail.com">Xiriir</a>';
+t.appendChild(d);
+}
+new MutationObserver(add).observe(a,{childList:true});
+add();
+})();
+</script>
