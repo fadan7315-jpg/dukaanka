@@ -147,3 +147,32 @@ if(!U){app.innerHTML=`<div class="au"><h1>Dukaanka</h1><p>Xisaabta dukaankaaga, 
 app.innerHTML=`<header><div style="flex:1;min-width:0"><select onchange="A.sh(this.value)" style="background:transparent;color:#fff;border:0;font-size:19px;font-weight:700;padding:0;margin:0;width:100%">${SH.map(x=>`<option style="color:#000" value="${x.id}" ${x.id===CUR?"selected":""}>${esc(x.id===CUR?(S.shop||x.name||"Dukaanka"):(x.name||"Dukaan"))}</option>`).join("")}<option style="color:#000" value="__new">➕ Dukaan cusub</option></select><small id="st">${esc(st)}</small></div></header><main>${bn()}${V[act()||tab==="dash"||tab==="me"?tab:"dash"]()}</main><nav>${T.map(([k,i,l])=>`<button class="${k===tab?"on":""}" onclick="A.tab('${k}')"><b>${i}</b>${l}</button>`).join("")}</nav>`}
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js");
 </script></body></html>
+<script>
+(function(){
+var a=document.getElementById("app");
+function add(){
+if(!a||a.querySelector("#plink"))return;
+var d=document.createElement("div");
+d.id="plink";
+d.style.cssText="text-align:center;font-size:13px;padding:14px 14px 24px;opacity:.85";
+d.innerHTML='<a href="privacy.html" target="_blank" style="color:inherit">Siyaasadda Asturnaanta</a> &middot; <a href="mailto:faysaladan091@gmail.com" style="color:inherit">Xiriir</a>';
+a.appendChild(d);
+}
+new MutationObserver(add).observe(a,{childList:true});
+add();
+})();
+</script><script>
+(function(){
+var a=document.getElementById("app");
+function add(){
+if(!a||a.querySelector("#plink"))return;
+var d=document.createElement("div");
+d.id="plink";
+d.style.cssText="text-align:center;font-size:13px;padding:14px 14px 24px;opacity:.85";
+d.innerHTML='<a href="privacy.html" target="_blank" style="color:inherit">Siyaasadda Asturnaanta</a> &middot; <a href="mailto:faysaladan091@gmail.com" style="color:inherit">Xiriir</a>';
+a.appendChild(d);
+}
+new MutationObserver(add).observe(a,{childList:true});
+add();
+})();
+</script>
