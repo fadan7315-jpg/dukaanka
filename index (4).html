@@ -1,0 +1,336 @@
+<!DOCTYPE html><html lang="so"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b4f57"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-192.png">
+<title>Dukaanka</title>
+<style>
+:root{--bg:#eef3f4;--card:#fff;--ink:#12303a;--mut:#5f7a82;--pri:#0b4f57;--acc:#e9a23b;--line:#d5e1e4;--ok:#12805c;--bad:#b3341f;--soft:#e2eef0}
+@media(prefers-color-scheme:dark){:root{--bg:#0c1a1e;--card:#13272d;--ink:#e6f1f3;--mut:#8fb0b8;--pri:#5cc4c9;--line:#254049;--ok:#4cd6a0;--bad:#ff8a73;--soft:#1b3840}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:env(safe-area-inset-top) 0 calc(78px + env(safe-area-inset-bottom))}
+header{background:#0b4f57;color:#fff;padding:16px;display:flex;justify-content:space-between;align-items:center}
+header b{font-size:19px;letter-spacing:.2px}header small{opacity:.75;display:block;font-size:12px}
+main{padding:14px;max-width:620px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.hero{background:#0b4f57;color:#fff;border-radius:18px;padding:20px 18px;margin-bottom:12px}
+.hero small{opacity:.8;font-size:14px}.hero .big{font-size:42px;font-weight:800;line-height:1.1;color:var(--acc);margin:4px 0 2px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}.grid .card{margin:0;padding:12px}
+.grid small{color:var(--mut);font-size:13px;display:block}.grid b{font-size:20px}
+h3{margin:0 0 10px;font-size:16px;color:var(--pri)}
+input,select{width:100%;padding:12px;margin:4px 0;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
+.r{display:flex;gap:8px}.r>*{flex:1;min-width:0}
+button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:12px;background:var(--pri);color:#fff;width:100%;margin-top:6px}
+.dark button.p,button.p{background:#0b4f57;color:#fff}
+button.g{background:var(--soft);color:var(--pri)}button.s{width:auto;padding:6px 10px;font-size:13px;margin:0}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0}.row small{color:var(--mut);display:block}
+.chip{border-radius:20px;padding:3px 10px;font-size:12px;font-weight:700;background:var(--soft);color:var(--ok)}.chip.b{background:#fbe3dd;color:var(--bad)}
+.alert{background:#fff2d6;color:#7a5200;border-radius:10px;padding:10px;margin-bottom:12px;font-weight:600}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:#0b4f57;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:none;border-radius:0;margin:0;padding:9px 0;font-size:11px;font-weight:500;color:#b9d6da}
+nav button.on{color:#fff;background:#08393f}nav b{display:block;font-size:20px;font-weight:400}
+.au{max-width:380px;margin:0 auto;padding:36px 18px}.au h1{margin:0 0 4px;font-size:34px;color:var(--pri)}.au p{color:var(--mut);margin:0 0 22px}
+.lnk{background:none;color:var(--pri);padding:8px;font-weight:600}.err{color:var(--bad);font-weight:600;min-height:20px}
+#pv{display:none}
+@media print{body>*:not(#pv){display:none!important}#pv{display:block;color:#000;background:#fff;padding:18px;font-family:system-ui,sans-serif}body{background:#fff;padding:0}}
+</style></head><body><div id="app"></div><div id="pv"></div>
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import{getAuth,onAuthStateChanged,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,signOut}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import{getFirestore,doc,getDoc,setDoc,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+const cfg={apiKey:"AIzaSyBPUUlqzfCLVpU9E1hHD3pXvvbJtePcqFI",authDomain:"dukaanka-e8018.firebaseapp.com",projectId:"dukaanka-e8018",storageBucket:"dukaanka-e8018.firebasestorage.app",messagingSenderId:"408649877811",appId:"1:408649877811:web:3b2713fcc246463d595646"};
+const fb=initializeApp(cfg),auth=getAuth(fb),db=getFirestore(fb);
+const $=s=>document.querySelector(s),v=id=>$("#"+id).value,n=id=>parseFloat(v(id))||0;
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const m=x=>(x<0?"-":"")+"$"+Math.abs(x).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const sum=(a,f)=>a.reduce((t,x)=>t+f(x),0),today=()=>new Date().toISOString().slice(0,10);
+const empty=()=>({sales:[],stock:[],exp:[],debts:[],shop:"",lim:5});
+const CATS=["Kiro","Koronto","Dhaqaale/Shaqaale","Transport","Wixii kale"];
+let INV={c:"",t:"",it:[]},U=null,S=empty(),tab="dash",mode="in",err="",st="",tm,ready=false;
+const app=$("#app");
+const sold=i=>sum(S.sales.filter(x=>x.item.toLowerCase()===i.toLowerCase()),x=>x.q),rest=i=>i.in-sold(i.item);
+const AE={"auth/invalid-credential":"Email ama password waa khalad","auth/email-already-in-use":"Email-kan horey ayaa loo diiwaangeliyay","auth/weak-password":"Password-ku waa inuu ahaado 6 xaraf ama ka badan","auth/invalid-email":"Email-ku sax ma aha","auth/popup-closed-by-user":"Gelidda waa la joojiyay","auth/network-request-failed":"Internet ma jiro"};
+function setSt(t){st=t;const e=$("#st");if(e)e.textContent=t}
+let SH=[{id:"main",name:""}],CUR="main",pend=null,pid="";
+const kk=(id,p)=>p+U.uid+(id==="main"?"":"_"+id);
+const sref=id=>id==="main"?doc(db,"users",U.uid):doc(db,"users",U.uid,"shops",id);
+const saveMeta=()=>{localStorage.setItem("dkm_"+U.uid,JSON.stringify(SH));setDoc(doc(db,"users",U.uid),{meta:JSON.stringify(SH)},{merge:true}).catch(()=>{})};
+function flush(){clearTimeout(tm);if(pend){const f=pend;pend=null;f()}}
+function save(){if(!U)return;const id=CUR,t=Date.now(),js=JSON.stringify(S);if(pend&&pid!==id)flush();
+localStorage.setItem(kk(id,"dk_"),js);localStorage.setItem(kk(id,"dkt_"),t);setSt("Waa la keydinayaa…");clearTimeout(tm);pid=id;
+pend=()=>setDoc(sref(id),{json:js,t},{merge:true}).then(()=>setSt("☁ La keydiyay "+new Date().toLocaleTimeString())).catch(()=>setSt("⚠ Internet ma jiro, taleefanka ayaa ku kaydsan"));
+tm=setTimeout(flush,700)}
+async function loadShop(id){CUR=id;INV={c:"",t:"",it:[]};localStorage.setItem("dkc_"+U.uid,id);
+try{S={...empty(),...JSON.parse(localStorage.getItem(kk(id,"dk_"))||"{}")}}catch(e){S=empty()}
+tab="dash";render();
+try{const d=await getDoc(sref(id)),lt=+localStorage.getItem(kk(id,"dkt_"))||0;if(CUR!==id)return;
+if(d.exists()&&d.data().json){const x=d.data();if((x.t||0)>lt){S={...empty(),...JSON.parse(x.json)};localStorage.setItem(kk(id,"dk_"),x.json);localStorage.setItem(kk(id,"dkt_"),x.t)}else if(lt>(x.t||0))save();else setSt("☁ Waa la isku waafajiyay")}
+else if(lt)save();else setSt("Dukaan cusub")}catch(e){setSt("⚠ Internet ma jiro")}
+if(CUR!==id)return;const s=SH.find(x=>x.id===id);if(s&&!s.name&&S.shop){s.name=S.shop;saveMeta()}
+render()}
+let SUB={end:0,paid:false,unk:true};
+const act=()=>SUB.unk||SUB.end>Date.now(),left=()=>Math.max(0,Math.ceil((SUB.end-Date.now())/864e5));
+async function loadSub(){const k="dks_"+U.uid;
+try{const r=doc(db,"subs",U.uid);let d=await getDoc(r);
+if(!d.exists()){await setDoc(r,{start:serverTimestamp()});d=await getDoc(r)}
+const x=d.data(),s=x.start&&x.start.toMillis?x.start.toMillis():Date.now(),p=x.paidUntil&&x.paidUntil.toMillis?x.paidUntil.toMillis():0;
+SUB={end:Math.max(s+864e6,p),paid:p>Date.now(),unk:false};localStorage.setItem(k,JSON.stringify(SUB))}
+catch(e){let c=null;try{c=JSON.parse(localStorage.getItem(k))}catch(_){}SUB=c?{...c,unk:false}:{end:0,paid:false,unk:true}}
+render()}
+const bn=()=>{if(SUB.unk)return"";
+if(!act())return`<div class="card" style="border:2px solid var(--bad)"><h3 style="color:var(--bad)">Waqtigaagii bilaashka ah wuu dhammaaday</h3><p style="margin:0 0 8px">Xogtaada way ammaan tahay oo waad arki kartaa. Si aad xog cusub u keydiso, bixi <b>$7 bishii</b>.</p><div class="row"><span>Lambarka lacagta</span><b>618598555</b></div><button onclick="A.pay()">Ku soo wac WhatsApp</button><button class="g" onclick="A.chk()">Waan bixiyay, hubi</button></div>`;
+const d=left();if(SUB.paid&&d>5)return"";
+return`<div class="alert" style="background:var(--soft);color:var(--ink)">${SUB.paid?"Akoonka waa la bixiyay · "+d+" maalmood ayaa hartay":"Tijaabo bilaash · "+d+" maalmood ayaa hartay"}</div>`};
+onAuthStateChanged(auth,async u=>{U=u;ready=true;if(!u){S=empty();return render()}
+SH=[{id:"main",name:""}];try{const l=JSON.parse(localStorage.getItem("dkm_"+u.uid));if(Array.isArray(l)&&l.length)SH=l}catch(e){}
+let c=localStorage.getItem("dkc_"+u.uid)||"main";if(!SH.some(x=>x.id===c))c="main";
+SUB={end:0,paid:false,unk:true};loadShop(c);loadSub();
+try{const d=await getDoc(doc(db,"users",u.uid));if(d.exists()&&d.data().meta){const m=JSON.parse(d.data().meta);if(Array.isArray(m)&&m.length){SH=[...m,...SH.filter(x=>!m.some(y=>y.id===x.id))];localStorage.setItem("dkm_"+u.uid,JSON.stringify(SH));render()}}}catch(e){}});
+const A={
+async go(){err="";const e=v("em").trim(),p=v("pw");if(!e||!p){err="Geli email iyo password";return render()}
+try{mode==="up"?await createUserWithEmailAndPassword(auth,e,p):await signInWithEmailAndPassword(auth,e,p)}catch(x){err=AE[x.code]||x.code;render()}},
+async google(){err="";try{await signInWithPopup(auth,new GoogleAuthProvider())}catch(x){err=AE[x.code]||x.code;render()}},
+async reset(){const e=v("em").trim();if(!e){err="Marka hore geli email-kaaga";return render()}
+try{await sendPasswordResetEmail(auth,e);err="Waxaan u dirnay email dib u dejin ah"}catch(x){err=AE[x.code]||x.code}render()},
+sw(){mode=mode==="in"?"up":"in";err="";render()},
+out(){if(confirm("Ka bax akoonka?"))signOut(auth)},
+tab(t){tab=t;render();scrollTo(0,0)},
+del(k,i){if(confirm("Tirtir?")){S[k].splice(i,1);save();render()}},
+sale(){const item=v("si").trim(),q=n("sq"),c=n("sc"),p=n("sp");if(!item||q<=0||p<=0)return alert("Geli magaca, tirada iyo qiimaha iibka");
+S.sales.push({d:today(),item,q,c,p});if(!S.stock.some(x=>x.item.toLowerCase()===item.toLowerCase()))S.stock.push({item,in:0});save();render()},
+fill(){const l=[...S.sales].reverse().find(x=>x.item.toLowerCase()===v("si").trim().toLowerCase());if(l){if(!v("sc"))$("#sc").value=l.c;if(!v("sp"))$("#sp").value=l.p}},
+stock(){const item=v("ki").trim(),q=n("kq");if(!item||q<=0)return alert("Geli magaca iyo tirada");const f=S.stock.find(x=>x.item.toLowerCase()===item.toLowerCase());f?f.in+=q:S.stock.push({item,in:q});save();render()},
+exp(){const a=n("ea");if(a<=0)return alert("Geli qiimaha");S.exp.push({d:today(),cat:v("ec"),note:v("en"),a});save();render()},
+debt(){const a=n("da"),nm=v("dn").trim();if(a<=0||!nm)return alert("Geli magaca iyo qaddarka");S.debts.push({d:today(),nm,tel:v("dt"),a,paid:false});save();render()},
+paid(i){S.debts[i].paid=!S.debts[i].paid;save();render()},
+prof(){S.shop=v("sn").trim();S.lim=n("sl")||5;const s=SH.find(x=>x.id===CUR);if(s){s.name=S.shop;saveMeta()}save();render()},
+dl(){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:"application/json"}));a.download="dukaan-backup-"+today()+".json";a.click()},
+rf(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(!Array.isArray(j.sales))throw 0;S={...empty(),...j};save();render();alert("Waa la soo celiyay")}catch(e){alert("Faylkan ma saxna")}};r.readAsText(f)}};
+Object.assign(A,{
+cap(){INV.c=v("vc").trim();INV.t=v("vt").trim()},
+il(){A.cap();const item=v("vi").trim(),q=n("vq"),p=n("vp");if(!item||q<=0||p<=0)return alert("Geli alaabta, tirada iyo qiimaha");INV.it.push({item,q,p});render()},
+ir(i){A.cap();INV.it.splice(i,1);render()},
+ni(){if(confirm("Rasiid cusub bilow?")){INV={c:"",t:"",it:[]};render()}},
+txt(){const tot=sum(INV.it,x=>x.q*x.p);return`*${S.shop||"Dukaanka"}*\n🧾 Rasiid #${S.no||1}\nTaariikh: ${today()}\n`+(INV.c?`Macmiil: ${INV.c}\n`:"")+"------------\n"+INV.it.map(x=>`${x.item} × ${x.q} × ${m(x.p)} = ${m(x.q*x.p)}`).join("\n")+`\n------------\n*Wadarta: ${m(tot)}*\nMahadsanid!`},
+done(){S.no=(S.no||1)+1;save()},
+wa(){A.cap();if(!INV.it.length)return;const d=INV.t.replace(/\D/g,"");window.open((d.length>=9?"https://wa.me/"+d:"https://wa.me/")+"?text="+encodeURIComponent(A.txt()),"_blank");A.done()},
+pr(){A.cap();if(!INV.it.length)return;const tot=sum(INV.it,x=>x.q*x.p);
+$("#pv").innerHTML=`<h2 style="margin:0">${esc(S.shop||"Dukaanka")}</h2><p>Rasiid #${S.no||1} · ${today()}${INV.c?"<br>Macmiil: "+esc(INV.c):""}</p><table style="width:100%;border-collapse:collapse"><tr style="text-align:left;border-bottom:2px solid #000"><th>Alaab</th><th>Tirada</th><th>Qiimaha</th><th style="text-align:right">Wadar</th></tr>${INV.it.map(x=>`<tr style="border-bottom:1px solid #ccc"><td>${esc(x.item)}</td><td>${x.q}</td><td>${m(x.p)}</td><td style="text-align:right">${m(x.q*x.p)}</td></tr>`).join("")}</table><h3 style="text-align:right;color:#000">Wadarta: ${m(tot)}</h3><p>Mahadsanid!</p>`;window.print();A.done()}});
+Object.assign(A,{
+pay(){window.open("https://wa.me/252618598555?text="+encodeURIComponent("Salaan, waxaan rabaa inaan bixiyo Dukaanka ($7 bishii). Email: "+U.email),"_blank")},chk(){loadSub()},
+sh(val){flush();if(val==="__new"){const nm=(prompt("Magaca dukaanka cusub?")||"").trim();if(!nm)return render();const id="s"+Date.now().toString(36);SH.push({id,name:nm});saveMeta();S={...empty(),shop:nm};CUR=id;save();loadShop(id)}else if(val!==CUR)loadShop(val)}});
+Object.assign(window,{A});
+const T=[["dash","📊","Kooban"],["sales","🛒","Iibka"],["stock","📦","Keyd"],["exp","💸","Qarash"],["debt","📒","Deyn"],["inv","🧾","Rasiid"],["me","👤","Aniga"]];
+const dl=()=>`<datalist id="dl">${S.stock.map(x=>`<option value="${esc(x.item)}">`).join("")}</datalist>`;
+const none=t=>`<div class="row"><small>${t}</small></div>`;
+const V={
+inv(){const tot=sum(INV.it,x=>x.q*x.p);return`${dl()}<div class="card"><h3>Rasiid cusub #${S.no||1}</h3><input id="vc" placeholder="Magaca macmiilka" value="${esc(INV.c)}"><input id="vt" type="tel" placeholder="WhatsApp (tusaale 252618…)" value="${esc(INV.t)}"><input id="vi" list="dl" placeholder="Magaca alaabta"><div class="r"><input id="vq" type="number" inputmode="decimal" placeholder="Tirada"><input id="vp" type="number" inputmode="decimal" placeholder="Qiimaha $"></div><button class="g" onclick="A.il()">+ Ku dar alaab</button></div>
+<div class="card"><h3>Alaabta rasiidka</h3>${INV.it.length?INV.it.map((x,i)=>`<div class="row"><div>${esc(x.item)}<small>${x.q} × ${m(x.p)}</small></div><div><b>${m(x.q*x.p)}</b> <button class="s g" onclick="A.ir(${i})">✕</button></div></div>`).join("")+`<div class="row"><b>Wadarta</b><b>${m(tot)}</b></div><button onclick="A.wa()">Ku dir WhatsApp</button><button class="g" onclick="A.pr()">Daabac / PDF</button><button class="lnk" onclick="A.ni()">Rasiid cusub</button>`:none("Ku dar alaabta rasiidka marka hore.")}</div>`},
+dash(){const tot=sum(S.sales,x=>x.p*x.q),gp=sum(S.sales,x=>(x.p-x.c)*x.q),ex=sum(S.exp,x=>x.a),un=sum(S.debts.filter(x=>!x.paid),x=>x.a),net=gp-ex,low=S.stock.filter(i=>rest(i)<=S.lim);
+return`${low.length?`<div class="alert">⚠ ${low.length} alaab way ka yar yihiin ${S.lim} — fur “Keyd”</div>`:""}
+<div class="hero"><small>Faa’iidada saafiga ah</small><div class="big">${m(net)}</div><small>Iibka ${m(tot)} − kharashka ${m(ex)}</small></div>
+<div class="grid"><div class="card"><small>Wadarta iibka</small><b>${m(tot)}</b></div><div class="card"><small>Faa’iidada zaydka</small><b>${m(gp)}</b></div>
+<div class="card"><small>Qarashka</small><b>${m(ex)}</b></div><div class="card"><small>Deynta ka maqan</small><b>${m(un)}</b></div></div>
+<div class="card"><h3>Qarashka qaybahaan</h3>${CATS.map(c=>`<div class="row"><span>${c}</span><b>${m(sum(S.exp.filter(x=>x.cat===c),x=>x.a))}</b></div>`).join("")}</div>`},
+sales(){return`${dl()}<div class="card"><h3>Iib cusub</h3><input id="si" list="dl" placeholder="Magaca alaabta" oninput="A.fill()"><div class="r"><input id="sq" type="number" inputmode="decimal" placeholder="Tirada"><input id="sc" type="number" inputmode="decimal" placeholder="Qiimaha soo iibka $"></div><input id="sp" type="number" inputmode="decimal" placeholder="Qiimaha aad ku iibisay $"><button onclick="A.sale()">Keydi iibka</button></div>
+<div class="card"><h3>Iibkii ugu dambeeyay</h3>${S.sales.length?[...S.sales].map((x,i)=>[x,i]).reverse().slice(0,30).map(([x,i])=>`<div class="row"><div>${esc(x.item)} × ${x.q}<small>${x.d} · faa’iido ${m((x.p-x.c)*x.q)}</small></div><div><b>${m(x.p*x.q)}</b> <button class="s g" onclick="A.del('sales',${i})">✕</button></div></div>`).join(""):none("Weli iib ma jiro. Geli iibkaaga ugu horreeya.")}</div>`},
+stock(){return`${dl()}<div class="card"><h3>Ku dar alaab</h3><div class="r"><input id="ki" list="dl" placeholder="Magaca"><input id="kq" type="number" inputmode="decimal" placeholder="Tirada"></div><button onclick="A.stock()">Ku dar keydka</button></div>
+<div class="card"><h3>Keydka hadda</h3>${S.stock.length?S.stock.map((x,i)=>{const r=rest(x);return`<div class="row"><div>${esc(x.item)}<small>La keenay ${x.in} · la iibiyay ${sold(x.item)}</small></div><div><span class="chip ${r<=S.lim?"b":""}">${r}</span> <button class="s g" onclick="A.del('stock',${i})">✕</button></div></div>`}).join(""):none("Keydku waa madhan yahay.")}</div>`},
+exp(){return`<div class="card"><h3>Qarash cusub</h3><select id="ec">${CATS.map(c=>`<option>${c}</option>`).join("")}</select><input id="en" placeholder="Faahfaahin (ikhtiyaari)"><input id="ea" type="number" inputmode="decimal" placeholder="Qaddarka $"><button onclick="A.exp()">Keydi qarashka</button></div>
+<div class="card"><h3>Qarashyada</h3>${S.exp.length?[...S.exp].map((x,i)=>[x,i]).reverse().slice(0,30).map(([x,i])=>`<div class="row"><div>${esc(x.cat)}<small>${x.d} ${esc(x.note)}</small></div><div><b>${m(x.a)}</b> <button class="s g" onclick="A.del('exp',${i})">✕</button></div></div>`).join(""):none("Qarash ma jiro.")}</div>`},
+debt(){return`<div class="card"><h3>Deyn cusub</h3><input id="dn" placeholder="Magaca macmiilka"><div class="r"><input id="dt" type="tel" placeholder="Telefoon"><input id="da" type="number" inputmode="decimal" placeholder="Qaddarka $"></div><button onclick="A.debt()">Keydi deynta</button></div>
+<div class="card"><h3>Deymaha</h3>${S.debts.length?S.debts.map((x,i)=>`<div class="row"><div>${esc(x.nm)}<small>${x.d} ${esc(x.tel)}</small></div><div><b>${m(x.a)}</b> <button class="s ${x.paid?"g":""}" onclick="A.paid(${i})">${x.paid?"La bixiyay ✓":"Bixiyay?"}</button> <button class="s g" onclick="A.del('debts',${i})">✕</button></div></div>`).join(""):none("Deyn ma jiro.")}</div>`},
+me(){return`<div class="card"><h3>Dukaanka</h3><input id="sn" placeholder="Magaca dukaanka" value="${esc(S.shop)}"><input id="sl" type="number" placeholder="Digniinta keydka yar (tirada)" value="${S.lim}"><button onclick="A.prof()">Keydi</button></div>
+<div class="card"><h3>Akoonka</h3><div class="row"><span>${esc(U.email)}</span></div><button class="g" onclick="A.out()">Ka bax</button></div>
+<div class="card"><h3>Backup faylka</h3><button class="g" onclick="A.dl()">Soo deji Backup</button><input type="file" accept=".json" onchange="A.rf(this)"></div>`}};
+function render(){if(!ready)return;
+if(!U){app.innerHTML=`<div class="au"><h1>Dukaanka</h1><p>Xisaabta dukaankaaga, meel kasta ka hel.</p><input id="em" type="email" placeholder="Email" autocomplete="email"><input id="pw" type="password" placeholder="Password" autocomplete="current-password"><div class="err">${esc(err)}</div>
+<button onclick="A.go()">${mode==="up"?"Samee akoon":"Gal"}</button><button class="g" onclick="A.google()">Ku gal Google</button><button class="lnk" onclick="A.sw()">${mode==="up"?"Akoon ayaan leeyahay":"Akoon cusub samee"}</button>${mode==="in"?`<button class="lnk" onclick="A.reset()">Password-ka ma xasuusnid</button>`:""}</div>`;return}
+app.innerHTML=`<header><div style="flex:1;min-width:0"><select onchange="A.sh(this.value)" style="background:transparent;color:#fff;border:0;font-size:19px;font-weight:700;padding:0;margin:0;width:100%">${SH.map(x=>`<option style="color:#000" value="${x.id}" ${x.id===CUR?"selected":""}>${esc(x.id===CUR?(S.shop||x.name||"Dukaanka"):(x.name||"Dukaan"))}</option>`).join("")}<option style="color:#000" value="__new">➕ Dukaan cusub</option></select><small id="st">${esc(st)}</small></div></header><main>${bn()}${V[act()||tab==="dash"||tab==="me"?tab:"dash"]()}</main><nav>${T.map(([k,i,l])=>`<button class="${k===tab?"on":""}" onclick="A.tab('${k}')"><b>${i}</b>${l}</button>`).join("")}</nav>`}
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js");
+</script></body></html>
+<script>
+(function(){
+var a=document.getElementById("app");
+function add(){
+if(!a||a.querySelector("#plink"))return;
+var d=document.createElement("div");
+d.id="plink";
+d.style.cssText="text-align:center;font-size:13px;padding:14px 14px 24px;opacity:.85";
+d.innerHTML='<a href="privacy.html" target="_blank" style="color:inherit">Siyaasadda Asturnaanta</a> &middot; <a href="mailto:faysaladan091@gmail.com" style="color:inherit">Xiriir</a>';
+a.appendChild(d);
+}
+new MutationObserver(add).observe(a,{childList:true});
+add();
+})();
+</script><script>
+(function(){
+var a=document.getElementById("app");
+function add(){
+if(!a||a.querySelector("#plink"))return;
+var d=document.createElement("div");
+d.id="plink";
+d.style.cssText="text-align:center;font-size:13px;padding:14px 14px 24px;opacity:.85";
+d.innerHTML='<a href="privacy.html" target="_blank" style="color:inherit">Siyaasadda Asturnaanta</a> &middot; <a href="mailto:faysaladan091@gmail.com" style="color:inherit">Xiriir</a>';
+a.appendChild(d);
+}
+new MutationObserver(add).observe(a,{childList:true});
+add();
+})();
+</script>
+<style>#plink{display:none!important}#plink2{text-align:center;font-size:13px;color:var(--mut);padding:6px 0 18px}#plink2 a{color:var(--pri);text-decoration:none;font-weight:600}</style>
+<script>
+(function(){
+var a=document.getElementById("app");
+function add(){
+var t=document.querySelector("main")||document.querySelector(".au");
+if(!t||t.querySelector("#plink2"))return;
+var d=document.createElement("div");
+d.id="plink2";
+d.innerHTML='<a href="privacy.html" target="_blank">Siyaasadda Asturnaanta</a> &middot; <a href="mailto:faysaladan091@gmail.com">Xiriir</a>';
+t.appendChild(d);
+}
+new MutationObserver(add).observe(a,{childList:true});
+add();
+})();
+</script>
+<!DOCTYPE html><html lang="so"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b4f57"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-192.png">
+<title>Dukaanka</title>
+<style>
+:root{--bg:#eef3f4;--card:#fff;--ink:#12303a;--mut:#5f7a82;--pri:#0b4f57;--acc:#e9a23b;--line:#d5e1e4;--ok:#12805c;--bad:#b3341f;--soft:#e2eef0}
+@media(prefers-color-scheme:dark){:root{--bg:#0c1a1e;--card:#13272d;--ink:#e6f1f3;--mut:#8fb0b8;--pri:#5cc4c9;--line:#254049;--ok:#4cd6a0;--bad:#ff8a73;--soft:#1b3840}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:env(safe-area-inset-top) 0 calc(78px + env(safe-area-inset-bottom))}
+header{background:#0b4f57;color:#fff;padding:16px;display:flex;justify-content:space-between;align-items:center}
+header b{font-size:19px;letter-spacing:.2px}header small{opacity:.75;display:block;font-size:12px}
+main{padding:14px;max-width:620px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.hero{background:#0b4f57;color:#fff;border-radius:18px;padding:20px 18px;margin-bottom:12px}
+.hero small{opacity:.8;font-size:14px}.hero .big{font-size:42px;font-weight:800;line-height:1.1;color:var(--acc);margin:4px 0 2px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}.grid .card{margin:0;padding:12px}
+.grid small{color:var(--mut);font-size:13px;display:block}.grid b{font-size:20px}
+h3{margin:0 0 10px;font-size:16px;color:var(--pri)}
+input,select{width:100%;padding:12px;margin:4px 0;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
+.r{display:flex;gap:8px}.r>*{flex:1;min-width:0}
+button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:12px;background:var(--pri);color:#fff;width:100%;margin-top:6px}
+.dark button.p,button.p{background:#0b4f57;color:#fff}
+button.g{background:var(--soft);color:var(--pri)}button.s{width:auto;padding:6px 10px;font-size:13px;margin:0}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0}.row small{color:var(--mut);display:block}
+.chip{border-radius:20px;padding:3px 10px;font-size:12px;font-weight:700;background:var(--soft);color:var(--ok)}.chip.b{background:#fbe3dd;color:var(--bad)}
+.alert{background:#fff2d6;color:#7a5200;border-radius:10px;padding:10px;margin-bottom:12px;font-weight:600}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:#0b4f57;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:none;border-radius:0;margin:0;padding:9px 0;font-size:11px;font-weight:500;color:#b9d6da}
+nav button.on{color:#fff;background:#08393f}nav b{display:block;font-size:20px;font-weight:400}
+.au{max-width:380px;margin:0 auto;padding:36px 18px}.au h1{margin:0 0 4px;font-size:34px;color:var(--pri)}.au p{color:var(--mut);margin:0 0 22px}
+.lnk{background:none;color:var(--pri);padding:8px;font-weight:600}.err{color:var(--bad);font-weight:600;min-height:20px}
+.I{font-family:"Noto Serif",Georgia,serif}
+#pv{display:none}
+@media print{body>*:not(#pv){display:none!important}#pv{display:block;color:#000;background:#fff;padding:18px;font-family:system-ui,sans-serif}body{background:#fff;padding:0}}
+</style></head><body><div id="app"></div><div id="pv"></div>
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import{getAuth,onAuthStateChanged,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,signOut}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import{getFirestore,doc,getDoc,setDoc,serverTimestamp,deleteDoc}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+const cfg={apiKey:"AIzaSyBPUUlqzfCLVpU9E1hHD3pXvvbJtePcqFI",authDomain:"dukaanka-e8018.firebaseapp.com",projectId:"dukaanka-e8018",storageBucket:"dukaanka-e8018.firebasestorage.app",messagingSenderId:"408649877811",appId:"1:408649877811:web:3b2713fcc246463d595646"};
+const fb=initializeApp(cfg),auth=getAuth(fb),db=getFirestore(fb);
+const $=s=>document.querySelector(s),v=id=>$("#"+id).value,n=id=>parseFloat(v(id))||0;
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const m=x=>(x<0?"-":"")+"$"+Math.abs(x).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const sum=(a,f)=>a.reduce((t,x)=>t+f(x),0),today=()=>new Date().toISOString().slice(0,10);
+const empty=()=>({sales:[],stock:[],exp:[],debts:[],shop:"",lim:5});
+const CATS=["Kiro","Koronto","Dhaqaale/Shaqaale","Transport","Wixii kale"];
+let INV={c:"",t:"",it:[]},U=null,S=empty(),tab="dash",mode="in",err="",st="",tm,ready=false;
+const app=$("#app");
+const sold=i=>sum(S.sales.filter(x=>x.item.toLowerCase()===i.toLowerCase()),x=>x.q),rest=i=>i.in-sold(i.item);
+const AE={"auth/invalid-credential":"Email ama password waa khalad","auth/email-already-in-use":"Email-kan horey ayaa loo diiwaangeliyay","auth/weak-password":"Password-ku waa inuu ahaado 6 xaraf ama ka badan","auth/invalid-email":"Email-ku sax ma aha","auth/popup-closed-by-user":"Gelidda waa la joojiyay","auth/network-request-failed":"Internet ma jiro"};
+function setSt(t){st=t;const e=$("#st");if(e)e.textContent=t}
+let SH=[{id:"main",name:""}],CUR="main",pend=null,pid="";
+const kk=(id,p)=>p+U.uid+(id==="main"?"":"_"+id);
+const sref=id=>id==="main"?doc(db,"users",U.uid):doc(db,"users",U.uid,"shops",id);
+const saveMeta=()=>{localStorage.setItem("dkm_"+U.uid,JSON.stringify(SH));setDoc(doc(db,"users",U.uid),{meta:JSON.stringify(SH)},{merge:true}).catch(()=>{})};
+function flush(){clearTimeout(tm);if(pend){const f=pend;pend=null;f()}}
+function save(){if(!U)return;const id=CUR,t=Date.now(),js=JSON.stringify(S);if(pend&&pid!==id)flush();
+localStorage.setItem(kk(id,"dk_"),js);localStorage.setItem(kk(id,"dkt_"),t);setSt("Waa la keydinayaa…");clearTimeout(tm);pid=id;
+pend=()=>setDoc(sref(id),{json:js,t},{merge:true}).then(()=>setSt("☁ La keydiyay "+new Date().toLocaleTimeString())).catch(()=>setSt("⚠ Internet ma jiro, taleefanka ayaa ku kaydsan"));
+tm=setTimeout(flush,700)}
+async function loadShop(id){CUR=id;INV={c:"",t:"",it:[]};localStorage.setItem("dkc_"+U.uid,id);
+try{S={...empty(),...JSON.parse(localStorage.getItem(kk(id,"dk_"))||"{}")}}catch(e){S=empty()}
+tab="dash";render();
+try{const d=await getDoc(sref(id)),lt=+localStorage.getItem(kk(id,"dkt_"))||0;if(CUR!==id)return;
+if(d.exists()&&d.data().json){const x=d.data();if((x.t||0)>lt){S={...empty(),...JSON.parse(x.json)};localStorage.setItem(kk(id,"dk_"),x.json);localStorage.setItem(kk(id,"dkt_"),x.t)}else if(lt>(x.t||0))save();else setSt("☁ Waa la isku waafajiyay")}
+else if(lt)save();else setSt("Dukaan cusub")}catch(e){setSt("⚠ Internet ma jiro")}
+if(CUR!==id)return;const s=SH.find(x=>x.id===id);if(s&&!s.name&&S.shop){s.name=S.shop;saveMeta()}
+render()}
+let SUB={end:0,paid:false,unk:true};
+const act=()=>SUB.unk||SUB.end>Date.now(),left=()=>Math.max(0,Math.ceil((SUB.end-Date.now())/864e5));
+async function loadSub(){const k="dks_"+U.uid;
+try{const r=doc(db,"subs",U.uid);let d=await getDoc(r);
+if(!d.exists()){await setDoc(r,{start:serverTimestamp()});d=await getDoc(r)}
+const x=d.data(),s=x.start&&x.start.toMillis?x.start.toMillis():Date.now(),p=x.paidUntil&&x.paidUntil.toMillis?x.paidUntil.toMillis():0;
+SUB={end:Math.max(s+864e6,p),paid:p>Date.now(),unk:false};localStorage.setItem(k,JSON.stringify(SUB))}
+catch(e){let c=null;try{c=JSON.parse(localStorage.getItem(k))}catch(_){}SUB=c?{...c,unk:false}:{end:0,paid:false,unk:true}}
+render()}
+const bn=()=>{if(SUB.unk)return"";
+if(!act())return`<div class="card" style="border:2px solid var(--bad)"><h3 style="color:var(--bad)">Waqtigaagii bilaashka ah wuu dhammaaday</h3><p style="margin:0 0 8px">Xogtaada way ammaan tahay oo waad arki kartaa. Si aad xog cusub u keydiso, bixi <b>$7 bishii</b>.</p><div class="row"><span>Lambarka lacagta</span><b>618598555</b></div><button onclick="A.pay()">Ku soo wac WhatsApp</button><button class="g" onclick="A.chk()">Waan bixiyay, hubi</button></div>`;
+const d=left();if(SUB.paid&&d>5)return"";
+return`<div class="alert" style="background:var(--soft);color:var(--ink)">${SUB.paid?"Akoonka waa la bixiyay · "+d+" maalmood ayaa hartay":"Tijaabo bilaash · "+d+" maalmood ayaa hartay"}</div>`};
+onAuthStateChanged(auth,async u=>{U=u;ready=true;if(!u){S=empty();return render()}
+SH=[{id:"main",name:""}];try{const l=JSON.parse(localStorage.getItem("dkm_"+u.uid));if(Array.isArray(l)&&l.length)SH=l}catch(e){}
+let c=localStorage.getItem("dkc_"+u.uid)||"main";if(!SH.some(x=>x.id===c))c="main";
+SUB={end:0,paid:false,unk:true};loadShop(c);loadSub();
+try{const d=await getDoc(doc(db,"users",u.uid));if(d.exists()&&d.data().meta){const m=JSON.parse(d.data().meta);if(Array.isArray(m)&&m.length){SH=[...m,...SH.filter(x=>!m.some(y=>y.id===x.id))];localStorage.setItem("dkm_"+u.uid,JSON.stringify(SH));render()}}}catch(e){}});
+const A={
+async go(){err="";const e=v("em").trim(),p=v("pw");if(!e||!p){err="Geli email iyo password";return render()}
+try{mode==="up"?await createUserWithEmailAndPassword(auth,e,p):await signInWithEmailAndPassword(auth,e,p)}catch(x){err=AE[x.code]||x.code;render()}},
+async google(){err="";try{await signInWithPopup(auth,new GoogleAuthProvider())}catch(x){err=AE[x.code]||x.code;render()}},
+async reset(){const e=v("em").trim();if(!e){err="Marka hore geli email-kaaga";return render()}
+try{await sendPasswordResetEmail(auth,e);err="Waxaan u dirnay email dib u dejin ah"}catch(x){err=AE[x.code]||x.code}render()},
+sw(){mode=mode==="in"?"up":"in";err="";render()},
+out(){if(confirm("Ka bax akoonka?"))signOut(auth)},
+tab(t){tab=t;render();scrollTo(0,0)},
+del(k,i){if(confirm("Tirtir?")){S[k].splice(i,1);save();render()}},
+sale(){const item=v("si").trim(),q=n("sq"),c=n("sc"),p=n("sp");if(!item||q<=0||p<=0)return alert("Geli magaca, tirada iyo qiimaha iibka");
+const cr=$("#scr")&&$("#scr").checked,cn=$("#scn")?v("scn").trim():"";if(cr&&!cn)return alert("Geli magaca macmiilka deynta");S.sales.push({d:today(),item,q,c,p,cr:cr?1:0});if(cr)S.debts.push({d:today(),nm:cn,tel:"",a:p*q,pf:(p-c)*q,paid:false});if(!S.stock.some(x=>x.item.toLowerCase()===item.toLowerCase()))S.stock.push({item,in:0});save();render()},
+fill(){const l=[...S.sales].reverse().find(x=>x.item.toLowerCase()===v("si").trim().toLowerCase());if(l){if(!v("sc"))$("#sc").value=l.c;if(!v("sp"))$("#sp").value=l.p}},
+stock(){const item=v("ki").trim(),q=n("kq");if(!item||q<=0)return alert("Geli magaca iyo tirada");const f=S.stock.find(x=>x.item.toLowerCase()===item.toLowerCase());f?f.in+=q:S.stock.push({item,in:q});save();render()},
+exp(){const a=n("ea");if(a<=0)return alert("Geli qiimaha");S.exp.push({d:today(),cat:v("ec"),note:v("en"),a});save();render()},
+debt(){const a=n("da"),nm=v("dn").trim();if(a<=0||!nm)return alert("Geli magaca iyo qaddarka");S.debts.push({d:today(),nm,tel:v("dt"),a,pf:n("dp"),paid:false});save();render()},
+paid(i){S.debts[i].paid=!S.debts[i].paid;save();render()},
+prof(){S.shop=v("sn").trim();S.lim=n("sl")||5;const s=SH.find(x=>x.id===CUR);if(s){s.name=S.shop;saveMeta()}save();render()},
+dl(){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:"application/json"}));a.download="dukaan-backup-"+today()+".json";a.click()},
+rf(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(!Array.isArray(j.sales))throw 0;S={...empty(),...j};save();render();alert("Waa la soo celiyay")}catch(e){alert("Faylkan ma saxna")}};r.readAsText(f)}};
+Object.assign(A,{
+cap(){INV.c=v("vc").trim();INV.t=v("vt").trim()},
+il(){A.cap();const item=v("vi").trim(),q=n("vq"),p=n("vp");if(!item||q<=0||p<=0)return alert("Geli alaabta, tirada iyo qiimaha");INV.it.push({item,q,p});render()},
+ir(i){A.cap();INV.it.splice(i,1);render()},
+ni(){if(confirm("Rasiid cusub bilow?")){INV={c:"",t:"",it:[]};render()}},
+txt(){const tot=sum(INV.it,x=>x.q*x.p);return`*${S.shop||"Dukaanka"}*\n🧾 Rasiid #${S.no||1}\nTaariikh: ${today()}\n`+(INV.c?`Macmiil: ${INV.c}\n`:"")+"------------\n"+INV.it.map(x=>`${x.item} × ${x.q} × ${m(x.p)} = ${m(x.q*x.p)}`).join("\n")+`\n------------\n*Wadarta: ${m(tot)}*\nMahadsanid!`},
+done(){S.no=(S.no||1)+1;save()},
+wa(){A.cap();if(!INV.it.length)return;const d=INV.t.replace(/\D/g,"");window.open((d.length>=9?"https://wa.me/"+d:"https://wa.me/")+"?text="+encodeURIComponent(A.txt()),"_blank");A.done();render()},
+pr(){A.cap();if(!INV.it.length)return;const tot=sum(INV.it,x=>x.q*x.p);
+$("#pv").innerHTML=`<h2 style="margin:0">${esc(S.shop||"Dukaanka")}</h2><p>Rasiid #${S.no||1} · ${today()}${INV.c?"<br>Macmiil: "+esc(INV.c):""}</p><table style="width:100%;border-collapse:collapse"><tr style="text-align:left;border-bottom:2px solid #000"><th>Alaab</th><th>Tirada</th><th>Qiimaha</th><th style="text-align:right">Wadar</th></tr>${INV.it.map(x=>`<tr style="border-bottom:1px solid #ccc"><td>${esc(x.item)}</td><td>${x.q}</td><td>${m(x.p)}</td><td style="text-align:right">${m(x.q*x.p)}</td></tr>`).join("")}</table><h3 style="text-align:right;color:#000">Wadarta: ${m(tot)}</h3><p>Mahadsanid!</p>`;window.print();A.done();render()}});
+Object.assign(A,{
+pay(){window.open("https://wa.me/252618598555?text="+encodeURIComponent("Salaan, waxaan rabaa inaan bixiyo Dukaanka ($7 bishii). Email: "+U.email),"_blank")},chk(){loadSub()},
+async dsh(){if(CUR==="main")return alert("Dukaanka ugu horreeya lama tirtiri karo");const s=SH.find(x=>x.id===CUR),id=CUR;if(!confirm("Tirtir dukaanka "+(S.shop||(s&&s.name)||"")+" iyo xogtiisa oo dhan? Dib looma soo celin karo."))return;clearTimeout(tm);pend=null;SH=SH.filter(x=>x.id!==id);saveMeta();localStorage.removeItem(kk(id,"dk_"));localStorage.removeItem(kk(id,"dkt_"));try{await deleteDoc(sref(id))}catch(e){}loadShop("main")},
+sh(val){flush();if(val==="__new"){const nm=(prompt("Magaca dukaanka cusub?")||"").trim();if(!nm)return render();const id="s"+Date.now().toString(36);SH.push({id,name:nm});saveMeta();S={...empty(),shop:nm};CUR=id;save();loadShop(id)}else if(val!==CUR)loadShop(val)}});
+Object.assign(window,{A});
+const T=[["dash","📊","Kooban"],["sales","🛒",'<span class="I">I</span>ibka'],["stock","📦","Keyd"],["exp","💸","Qarash"],["debt","📒","Deyn"],["inv","🧾","Rasiid"],["me","👤","Aniga"]];
+const dl=()=>`<datalist id="dl">${S.stock.map(x=>`<option value="${esc(x.item)}">`).join("")}</datalist>`;
+const none=t=>`<div class="row"><small>${t}</small></div>`;
+const V={
+inv(){const tot=sum(INV.it,x=>x.q*x.p);return`${dl()}<div class="card"><h3>Rasiid cusub #${S.no||1}</h3><input id="vc" placeholder="Magaca macmiilka" value="${esc(INV.c)}"><input id="vt" type="tel" placeholder="WhatsApp (tusaale 252618…)" value="${esc(INV.t)}"><input id="vi" list="dl" placeholder="Magaca alaabta"><div class="r"><input id="vq" type="number" inputmode="decimal" placeholder="Tirada"><input id="vp" type="number" inputmode="decimal" placeholder="Qiimaha $"></div><button class="g" onclick="A.il()">+ Ku dar alaab</button></div>
+<div class="card"><h3>Alaabta rasiidka</h3>${INV.it.length?INV.it.map((x,i)=>`<div class="row"><div>${esc(x.item)}<small>${x.q} × ${m(x.p)}</small></div><div><b>${m(x.q*x.p)}</b> <button class="s g" onclick="A.ir(${i})">✕</button></div></div>`).join("")+`<div class="row"><b>Wadarta</b><b>${m(tot)}</b></div><button onclick="A.wa()">Ku dir WhatsApp</button><button class="g" onclick="A.pr()">Daabac / PDF</button><button class="lnk" onclick="A.ni()">Rasiid cusub</button>`:none("Ku dar alaabta rasiidka marka hore.")}</div>`},
+dash(){const tot=sum(S.sales,x=>x.p*x.q),gp=sum(S.sales,x=>(x.p-x.c)*x.q),ex=sum(S.exp,x=>x.a),un=sum(S.debts.filter(x=>!x.paid),x=>x.a),net=gp-ex,low=S.stock.filter(i=>rest(i)<=S.lim),dpf=sum(S.debts.filter(x=>!x.paid),x=>x.pf||0);
+return`${low.length?`<div class="alert">⚠ ${low.length} alaab way ka yar yihiin ${S.lim} — fur “Keyd”</div>`:""}
+<div class="hero"><small>Faa’iidada saafiga ah</small><div class="big">${m(net)}</div><small><span class="I">I</span>ibka ${m(tot)} − kharashka ${m(ex)}</small></div>
+<div class="grid"><div class="card"><small>Wadarta iibka</small><b>${m(tot)}</b></div><div class="card"><small>Faa’iidada zaydka</small><b>${m(gp)}</b></div>
+<div class="card"><small>Qarashka</small><b>${m(ex)}</b></div><div class="card"><small>Deynta ka maqan</small><b>${m(un)}</b></div></div>
+<div class="card"><h3>Faa'iidada iyo deynta</h3><div class="row"><span>Faa'iidada ku jirta deynta<small>weli lama qaadan</small></span><b>${m(dpf)}</b></div><div class="row"><span>Faa'iidada la qabtay<small>saafi − deyn aan la qaadan</small></span><b>${m(net-dpf)}</b></div></div><div class="card"><h3>Qarashka qaybahaan</h3>${CATS.map(c=>`<div class="row"><span>${c}</span><b>${m(sum(S.exp.filter(x=>x.cat===c),x=>x.a))}</b></div>`).join("")}</div>`},
+sales(){return`${dl()}<div class="card"><h3><span class="I">I</span>ib cusub</h3><input id="si" list="dl" placeholder="Magaca alaabta" oninput="A.fill()"><div class="r"><input id="sq" type="number" inputmode="decimal" placeholder="Tirada"><input id="sc" type="number" inputmode="decimal" placeholder="Qiimaha soo iibka $"></div><input id="sp" type="number" inputmode="decimal" placeholder="Qiimaha aad ku iibisay $"><label style="display:flex;gap:8px;align-items:center;margin:10px 0 2px"><input type="checkbox" id="scr" style="width:auto;margin:0"> Deyn ah (macmiilku weli ma bixin)</label><input id="scn" placeholder="Magaca macmiilka (haddii deyn ah)"><button onclick="A.sale()">Keydi iibka</button></div>
+<div class="card"><h3><span class="I">I</span>ibkii ugu dambeeyay</h3>${S.sales.length?[...S.sales].map((x,i)=>[x,i]).reverse().slice(0,30).map(([x,i])=>`<div class="row"><div>${esc(x.item)} × ${x.q}<small>${x.d} · faa’iido ${m((x.p-x.c)*x.q)}</small></div><div><b>${m(x.p*x.q)}</b> <button class="s g" onclick="A.del('sales',${i})">✕</button></div></div>`).join(""):none("Weli iib ma jiro. Geli iibkaaga ugu horreeya.")}</div>`},
+stock(){return`${dl()}<div class="card"><h3>Ku dar alaab</h3><div class="r"><input id="ki" list="dl" placeholder="Magaca"><input id="kq" type="number" inputmode="decimal" placeholder="Tirada"></div><button onclick="A.stock()">Ku dar keydka</button></div>
+<div class="card"><h3>Keydka hadda</h3>${S.stock.length?S.stock.map((x,i)=>{const r=rest(x);return`<div class="row"><div>${esc(x.item)}<small>La keenay ${x.in} · la iibiyay ${sold(x.item)}</small></div><div><span class="chip ${r<=S.lim?"b":""}">${r}</span> <button class="s g" onclick="A.del('stock',${i})">✕</button></div></div>`}).join(""):none("Keydku waa madhan yahay.")}</div>`},
+exp(){return`<div class="card"><h3>Qarash cusub</h3><select id="ec">${CATS.map(c=>`<option>${c}</option>`).join("")}</select><input id="en" placeholder="Faahfaahin (ikhtiyaari)"><input id="ea" type="number" inputmode="decimal" placeholder="Qaddarka $"><button onclick="A.exp()">Keydi qarashka</button></div>
+<div class="card"><h3>Qarashyada</h3>${S.exp.length?[...S.exp].map((x,i)=>[x,i]).reverse().slice(0,30).map(([x,i])=>`<div class="row"><div>${esc(x.cat)}<small>${x.d} ${esc(x.note)}</small></div><div><b>${m(x.a)}</b> <button class="s g" onclick="A.del('exp',${i})">✕</button></div></div>`).join(""):none("Qarash ma jiro.")}</div>`},
+debt(){return`<div class="card"><h3>Deyn cusub</h3><input id="dn" placeholder="Magaca macmiilka"><div class="r"><input id="dt" type="tel" placeholder="Telefoon"><input id="da" type="number" inputmode="decimal" placeholder="Qaddarka $"></div><input id="dp" type="number" inputmode="decimal" placeholder="Faa'iidada ku jirta $ (ikhtiyaari)"><button onclick="A.debt()">Keydi deynta</button></div>
+<div class="card"><h3>Deymaha</h3>${S.debts.length?S.debts.map((x,i)=>`<div class="row"><div>${e
