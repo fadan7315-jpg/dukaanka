@@ -52,11 +52,14 @@ const sold=m=>sum(S.sales.filter(x=>x.item.toLowerCase()===m.toLowerCase()),x=>x
 const CATS=["Kiro","Koronto","Dhaqaale/Shaqaale","Transport","Wixii kale"];
 function save(){S.t=Date.now();try{localStorage.setItem(LK,JSON.stringify(S))}catch(e){}clearTimeout(tm);tm=setTimeout(push,800)}
 function load(){try{const j=localStorage.getItem(LK);if(j)Object.assign(S,JSON.parse(j))}catch(e){}}
-function del(k,i){const p=k+i;if(pend===p){S[k].splice(i,1);pend="";save()}else pend=p;render()}
+const dprofit=d=>d.sid?sum(S.sales.filter(x=>x.sid===d.sid),x=>(x.p-x.c)*x.q):0;
+const tied=()=>sum(S.debts.filter(d=>!d.paid),dprofit);
+function del(k,i){const p=k+i;if(pend===p){if(k==="sales"&&S.sales[i].sid)S.debts=S.debts.filter(d=>d.sid!==S.sales[i].sid);S[k].splice(i,1);pend="";save()}else pend=p;render()}
 const dbtn=(k,i)=>`<button class="btn s" onclick="del('${k}',${i})">${pend===k+i?"Hubi?":"✕"}</button>`;
 function go(t){tab=t;pend="";render();scrollTo(0,0)}
 function addSale(){const item=v("si").trim(),q=n("sq");if(!item||q<=0)return;
- S.sales.push({d:v("sd")||today(),item,q,c:n("sc"),p:n("sp")});
+ const dn=v("sdn").trim(),sid=dn?String(Date.now()):"",pr=n("sp"),co=n("sc"),dt=v("sd")||today();
+ S.sales.push({d:dt,item,q,c:co,p:pr,sid});if(dn)S.debts.push({d:dt,nm:dn,tel:"",a:pr*q,paid:false,sid});
  if(!S.stock.some(x=>x.item.toLowerCase()===item.toLowerCase()))S.stock.push({item,in:0});save();render()}
 function fill(){const l=[...S.sales].reverse().find(x=>x.item.toLowerCase()===v("si").trim().toLowerCase());if(l){if(!v("sc"))$("#sc").value=l.c;if(!v("sp"))$("#sp").value=l.p}}
 function addStock(){const item=v("ki").trim(),q=n("kq");if(!item)return;const f=S.stock.find(x=>x.item.toLowerCase()===item.toLowerCase());
@@ -94,7 +97,7 @@ dash(){const tot=sum(S.sales,x=>x.p*x.q),gp=sum(S.sales,x=>(x.p-x.c)*x.q),ex=sum
  const K=(h,x,c)=>`<div class="kpi"><h4>${h}</h4><div style="${c||""}">${$$(x)}</div></div>`,net=gp-ex;
  return ((S.sales.length||S.exp.length)&&(!S.bk||(Date.now()-new Date(S.bk))/864e5>7)?`<div class="alert">💾 Backup samee: dir faylka WhatsApp ama Drive (tab-ka Kooban, hoos).</div>`:"")+(low.length?`<div class="alert">⚠ DIGNIIN: ${low.length} alaab ayaa ka yar ${S.lim} xabo — fur “Keyd”.</div>`:"")+
  K("WADARTA IIBKA GUUD (Total Sales)",tot)+K("FAAIIDADA ZAIIDKA AH (Gross Profit)",gp)+K("WADARTA QARASHKA (Total Expenses)",ex)+
- K("FAAIIDADA SAFIGA AH (Net Profit)",net,"color:var("+(net<0?"--bad":"--ok")+")")+K("DEYNTA KA MAQAN (Unpaid Debts)",un)+
+ K("FAAIIDADA SAFIGA AH (Net Profit)",net,"color:var("+(net<0?"--bad":"--ok")+")")+K("DEYNTA KA MAQAN (Unpaid Debts)",un)+K("FAAIIDADA KU XIRAN DEYNTA (Profit in Debt)",tied())+K("FAAIIDADA DIYAARKA AH (Net – deyn)",net-tied())+
  `<div class="card"><h3>Qarashka qaybaha ahaan</h3>${CATS.map(c=>`<div class="row"><span>${c}</span><b>${$$(sum(S.exp.filter(x=>x.cat===c),x=>x.a))}</b></div>`).join("")}</div>
  ${V.cloud()}
  <div class="card"><h3>Backup (ka ilaali xogta)</h3><small>“Samee Backup” → koobiyee qoraalka oo ku keydi Notes/WhatsApp. Soo celinta: ku dheji, riix “Soo celi”.</small>
@@ -103,8 +106,8 @@ cloud(){const st=`<small id="cs">${esc(CS)}</small>`;
  if(!CU)return `<div class="card"><h3>☁ Cloud Backup</h3><small>Gal Gmail-kaaga si xogtaadu u badbaado oo taleefan kasta kuugu soo noqoto.</small><button class="btn" onclick="signG()">Gal Google</button>${st}</div>`;
  return `<div class="card"><h3>☁ Cloud Backup</h3><div>Gashay: <b>${esc(CU.email)}</b></div><div class="r2"><button class="btn" onclick="push()">Sync hadda</button><button class="btn" onclick="signout()">Ka bax</button></div>${st}</div>`},
 sales(){return dl()+`<div class="card"><h3>Iib cusub</h3><input id="si" list="dl" placeholder="Magaca alaabta" oninput="fill()"><div class="r2"><input id="sq" type="number" inputmode="decimal" placeholder="Tirada"><input id="sd" type="date" value="${today()}"></div>
- <div class="r2"><input id="sc" type="number" inputmode="decimal" placeholder="Qiimaha soo iibka $"><input id="sp" type="number" inputmode="decimal" placeholder="Qiimaha iibka $"></div><button class="btn" onclick="addSale()">+ Ku dar Iibka</button></div>
- <div class="card"><h3>Iibyada (${S.sales.length}) — ${$$(sum(S.sales,x=>x.p*x.q))}</h3>${[...S.sales.keys()].reverse().map(i=>{const x=S.sales[i];return `<div class="row"><div><b>${esc(x.item)}</b> × ${x.q}<small>${fd(x.d)} · Iib ${$$(x.p*x.q)} · Faaiido ${$$((x.p-x.c)*x.q)}</small></div>${dbtn("sales",i)}</div>`}).join("")||"<small>Weli iib ma jiro.</small>"}</div>`},
+ <div class="r2"><input id="sc" type="number" inputmode="decimal" placeholder="Qiimaha soo iibka $"><input id="sp" type="number" inputmode="decimal" placeholder="Qiimaha iibka $"></div><input id="sdn" placeholder="Deyn? Geli magaca macmiilka (ikhtiyaari)"><button class="btn" onclick="addSale()">+ Ku dar Iibka</button></div>
+ <div class="card"><h3>Iibyada (${S.sales.length}) — ${$$(sum(S.sales,x=>x.p*x.q))}</h3>${[...S.sales.keys()].reverse().map(i=>{const x=S.sales[i];return `<div class="row"><div><b>${esc(x.item)}</b> × ${x.q}<small>${fd(x.d)} · Iib ${$$(x.p*x.q)} · Faaiido ${$$((x.p-x.c)*x.q)}${x.sid&&S.debts.some(d=>d.sid===x.sid&&!d.paid)?' · <b style="color:var(--bad)">DEYN</b>':''}</small></div>${dbtn("sales",i)}</div>`}).join("")||"<small>Weli iib ma jiro.</small>"}</div>`},
 stock(){return `<div class="card"><h3>Alaab soo gashay</h3><input id="ki" placeholder="Magaca alaabta (tus. Bariis)"><input id="kq" type="number" inputmode="decimal" placeholder="Tirada soo gashay"><button class="btn" onclick="addStock()">+ Ku dar Keydka</button>
  <small>Haddii magacu jiro, tirada waa lagu darayaa.</small><label style="display:block;margin-top:8px">Xadka digniinta (ka yar):</label><input type="number" inputmode="numeric" value="${S.lim}" onchange="S.lim=parseFloat(this.value)||0;save();render()"></div>
  <div class="card"><h3>Keydka</h3>${S.stock.map((x,i)=>{const r=rest(x),c=r<=0?"bad":r<S.lim?"wa":"ok",t=r<=0?"DHAMMAATAY":r<S.lim?"DIGNIIN":"Wanaagsan";
@@ -113,7 +116,7 @@ exp(){const seg=`<div class="seg"><button class="${sub=="exp"?"on":""}" onclick=
  if(sub=="exp")return seg+`<div class="card"><h3>Qarash cusub</h3><select id="ec">${CATS.map(c=>`<option>${c}</option>`).join("")}</select><input id="en" placeholder="Faahfaahin"><div class="r2"><input id="ea" type="number" inputmode="decimal" placeholder="Qadarka $"><input id="ed" type="date" value="${today()}"></div><button class="btn" onclick="addExp()">+ Ku dar</button></div>
  <div class="card"><h3>Qarashada — ${$$(sum(S.exp,x=>x.a))}</h3>${[...S.exp.keys()].reverse().map(i=>{const x=S.exp[i];return `<div class="row"><div><b>${esc(x.cat)}</b> ${$$(x.a)}<small>${fd(x.d)} · ${esc(x.note)}</small></div>${dbtn("exp",i)}</div>`}).join("")||"<small>Qarash ma jiro.</small>"}</div>`;
  return seg+`<div class="card"><h3>Deyn cusub</h3><input id="dn" placeholder="Magaca macmiilka"><input id="dt" type="tel" placeholder="Nambarka Tel-ka"><div class="r2"><input id="da" type="number" inputmode="decimal" placeholder="Qadarka $"><input id="dd" type="date" value="${today()}"></div><button class="btn" onclick="addDebt()">+ Ku dar</button></div>
- <div class="card"><h3>Deymaha — Ma bixin ${$$(sum(S.debts.filter(x=>!x.paid),x=>x.a))}</h3>${[...S.debts.keys()].reverse().map(i=>{const x=S.debts[i];return `<div class="row"><div><b>${esc(x.nm)}</b> ${$$(x.a)}<small>${fd(x.d)} · ${esc(x.tel)}</small></div><button class="chip ${x.paid?"ok":"bad"}" onclick="S.debts[${i}].paid=!S.debts[${i}].paid;save();render()">${x.paid?"Wa bixiyay":"Ma bixin"}</button>${dbtn("debts",i)}</div>`}).join("")||"<small>Deyn ma jirto.</small>"}</div>`},
+ <div class="card"><h3>Deymaha — Ma bixin ${$$(sum(S.debts.filter(x=>!x.paid),x=>x.a))}</h3>${[...S.debts.keys()].reverse().map(i=>{const x=S.debts[i];return `<div class="row"><div><b>${esc(x.nm)}</b> ${$$(x.a)}<small>${fd(x.d)} · ${esc(x.tel)}${dprofit(x)?" · Faaiido "+$$(dprofit(x)):""}</small></div><button class="chip ${x.paid?"ok":"bad"}" onclick="S.debts[${i}].paid=!S.debts[${i}].paid;save();render()">${x.paid?"Wa bixiyay":"Ma bixin"}</button>${dbtn("debts",i)}</div>`}).join("")||"<small>Deyn ma jirto.</small>"}</div>`},
 inv(){const T=sum(inv.it,x=>x.q*x.p);return `<div class="card noprint"><h3>Invoice cusub</h3><input value="${esc(S.shop)}" placeholder="Magaca dukaanka" onchange="S.shop=this.value;save();render()"><input id="ic" value="${esc(inv.c)}" placeholder="Magaca macmiilka"><input id="it" value="${esc(inv.t)}" placeholder="Tel-ka macmiilka">
  <input id="ii" list="dl" placeholder="Alaabta"><div class="r2"><input id="iq" type="number" inputmode="decimal" placeholder="Tirada"><input id="ip" type="number" inputmode="decimal" placeholder="Qiimaha $"></div>${dl()}<button class="btn" onclick="addInv()">+ Ku dar alaabta</button></div>
  <div class="card inv"><div class="hd"><b style="font-size:18px">${esc(S.shop)}</b><br>QAANSHEEGTA (INVOICE) · INV-${String(S.no).padStart(4,"0")}</div><p>Taariikh: ${fd(today())}<br>Macmiil: <b>${esc(inv.c)||"—"}</b> ${esc(inv.t)}</p>
