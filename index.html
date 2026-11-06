@@ -53,9 +53,9 @@ nav button.on{color:#fff;background:#08393f}nav b{display:block;font-size:20px;f
 .rcp .ft small{display:block;color:#8aa3a9;font-weight:400;margin-top:6px;font-size:11px}
 </style></head><body><div id="app"></div><div id="pv"></div>
 <script type="module">
-import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import{initializeApp,getApps}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import{getAuth,onAuthStateChanged,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,signOut}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import{getFirestore,doc,getDoc,setDoc,serverTimestamp,deleteDoc}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import{getFirestore,doc,getDoc,setDoc,serverTimestamp,deleteDoc,collection,query,where,getDocs,updateDoc}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 const cfg={apiKey:"AIzaSyBPUUlqzfCLVpU9E1hHD3pXvvbJtePcqFI",authDomain:"dukaanka-e8018.firebaseapp.com",projectId:"dukaanka-e8018",storageBucket:"dukaanka-e8018.firebasestorage.app",messagingSenderId:"408649877811",appId:"1:408649877811:web:3b2713fcc246463d595646"};
 const fb=initializeApp(cfg),auth=getAuth(fb),db=getFirestore(fb);
 const $=s=>document.querySelector(s),v=id=>$("#"+id).value,n=id=>parseFloat(v(id))||0;
@@ -65,7 +65,7 @@ const sum=(a,f)=>a.reduce((t,x)=>t+f(x),0),today=()=>new Date().toISOString().sl
 const empty=()=>({sales:[],stock:[],exp:[],debts:[],shop:"",lim:5});
 const PAY=["Cash","EVC Plus","Zaad","e-Dahab","Bank","Kale"];
 const CATS=["Kiro","Koronto","Dhaqaale/Shaqaale","Transport","Wixii kale"];
-let CM=false,DM=null,CART=[],CF={n:"",t:"",pay:"Cash",paid:"",dc:""},RC=null,INV={c:"",t:"",it:[]},U=null,S=empty(),tab="dash",mode="in",err="",st="",tm,ready=false;
+let CASH=null,CAT=[],OWN=[],CASHL=[],CM=false,DM=null,CART=[],CF={n:"",t:"",pay:"Cash",paid:"",dc:""},RC=null,INV={c:"",t:"",it:[]},U=null,S=empty(),tab="dash",mode="in",err="",st="",tm,ready=false;
 const app=$("#app");
 const sold=i=>sum(S.sales.filter(x=>x.item.toLowerCase()===i.toLowerCase()),x=>x.q),rest=i=>i.in-sold(i.item);
 const AE={"auth/invalid-credential":"Email ama password waa khalad","auth/email-already-in-use":"Email-kan horey ayaa loo diiwaangeliyay","auth/weak-password":"Password-ku waa inuu ahaado 6 xaraf ama ka badan","auth/invalid-email":"Email-ku sax ma aha","auth/popup-closed-by-user":"Gelidda waa la joojiyay","auth/network-request-failed":"Internet ma jiro"};
@@ -77,7 +77,7 @@ const saveMeta=()=>{localStorage.setItem("dkm_"+U.uid,JSON.stringify(SH));setDoc
 function flush(){clearTimeout(tm);if(pend){const f=pend;pend=null;f()}}
 function save(){if(!U)return;const id=CUR,t=Date.now(),js=JSON.stringify(S);if(pend&&pid!==id)flush();
 localStorage.setItem(kk(id,"dk_"),js);localStorage.setItem(kk(id,"dkt_"),t);setSt("Waa la keydinayaa…");clearTimeout(tm);pid=id;
-pend=()=>setDoc(sref(id),{json:js,t},{merge:true}).then(()=>setSt("☁ La keydiyay "+new Date().toLocaleTimeString())).catch(()=>setSt("⚠ Internet ma jiro, taleefanka ayaa ku kaydsan"));
+pend=()=>setDoc(sref(id),{json:js,t},{merge:true}).then(()=>{setSt("☁ La keydiyay "+new Date().toLocaleTimeString());pub(id)}).catch(()=>setSt("⚠ Internet ma jiro, taleefanka ayaa ku kaydsan"));
 tm=setTimeout(flush,700)}
 async function loadShop(id){CUR=id;INV={c:"",t:"",it:[]};CART=[];RC=null;DM=null;CF={n:"",t:"",pay:"Cash",paid:"",dc:""};localStorage.setItem("dkc_"+U.uid,id);
 try{S={...empty(),...JSON.parse(localStorage.getItem(kk(id,"dk_"))||"{}")}}catch(e){S=empty()}
@@ -86,7 +86,7 @@ try{const d=await getDoc(sref(id)),lt=+localStorage.getItem(kk(id,"dkt_"))||0;if
 if(d.exists()&&d.data().json){const x=d.data();if((x.t||0)>lt){S={...empty(),...JSON.parse(x.json)};localStorage.setItem(kk(id,"dk_"),x.json);localStorage.setItem(kk(id,"dkt_"),x.t)}else if(lt>(x.t||0))save();else setSt("☁ Waa la isku waafajiyay")}
 else if(lt)save();else setSt("Dukaan cusub")}catch(e){setSt("⚠ Internet ma jiro")}
 if(CUR!==id)return;const s=SH.find(x=>x.id===id);if(s&&!s.name&&S.shop){s.name=S.shop;saveMeta()}
-render()}
+render();ingest()}
 let SUB={end:0,paid:false,unk:true};
 const act=()=>SUB.unk||SUB.end>Date.now(),left=()=>Math.max(0,Math.ceil((SUB.end-Date.now())/864e5));
 async function loadSub(){const k="dks_"+U.uid;
@@ -100,7 +100,41 @@ const bn=()=>{if(SUB.unk)return"";
 if(!act())return`<div class="card" style="border:2px solid var(--bad)"><h3 style="color:var(--bad)">Waqtigaagii bilaashka ah wuu dhammaaday</h3><p style="margin:0 0 8px">Xogtaada way ammaan tahay oo waad arki kartaa. Si aad xog cusub u keydiso, bixi <b>$7 bishii</b>.</p><div class="row"><span>Lambarka lacagta</span><b>618598555</b></div><button onclick="A.pay()">Ku soo wac WhatsApp</button><button class="g" onclick="A.chk()">Waan bixiyay, hubi</button></div>`;
 const d=left();if(SUB.paid&&d>5)return"";
 return`<div class="alert" style="background:var(--soft);color:var(--ink)">${SUB.paid?"Akoonka waa la bixiyay · "+d+" maalmood ayaa hartay":"Tijaabo bilaash · "+d+" maalmood ayaa hartay"}</div>`};
-onAuthStateChanged(auth,async u=>{U=u;ready=true;if(!u){S=empty();return render()}
+const catItems=()=>{const mp=new Map();S.sales.forEach(x=>mp.set(x.item.toLowerCase(),{n:x.item,p:Math.round(x.p*100)/100}));S.stock.forEach(x=>{if(!mp.has(x.item.toLowerCase()))mp.set(x.item.toLowerCase(),{n:x.item,p:0})});return[...mp.values()].slice(0,400)};
+const pub=id=>{if(!U||CASH||CUR!==id)return;setDoc(doc(db,"users",U.uid,"pub",id),{shop:S.shop||"",items:catItems(),t:Date.now()}).catch(()=>{})};
+async function saveNow(){const id=CUR,t=Date.now(),js=JSON.stringify(S);localStorage.setItem(kk(id,"dk_"),js);localStorage.setItem(kk(id,"dkt_"),t);await setDoc(sref(id),{json:js,t},{merge:true})}
+const lastC=nm=>{const l=[...S.sales].reverse().find(x=>x.item.toLowerCase()===nm.toLowerCase());return l?l.c:0};
+function applyEntry(e){const f=e.sub>0?e.tot/e.sub:1,d=String(e.d).slice(0,10),cs=e.it.map(x=>lastC(x.item));
+e.it.forEach((x,i)=>{S.sales.push({d,item:x.item,q:x.q,c:cs[i],p:Math.round(x.p*f*10000)/10000,cr:e.rem>0?1:0,by:e.cn||""});if(!S.stock.some(s=>s.item.toLowerCase()===x.item.toLowerCase()))S.stock.push({item:x.item,in:0})});
+if(e.rem>0){const gp=e.it.reduce((t,x,i)=>t+(x.p*f-cs[i])*x.q,0);S.debts.push({d,nm:e.cust||"",tel:e.tel||"",a:e.rem,pf:e.tot>0?Math.round(gp*e.rem/e.tot*100)/100:0,paid:false})}
+S.rcs=[{no:e.no,d:e.d,cust:e.cust,tel:e.tel,it:e.it,sub:e.sub,disc:e.disc,tot:e.tot,pd:e.pd,rem:e.rem,pay:e.pay,by:e.cn},...(S.rcs||[])].slice(0,200)}
+let ingBusy=false;
+async function ingest(){if(!U||CASH||ingBusy)return;ingBusy=true;const id=CUR;try{
+const sn=await getDocs(query(collection(db,"users",U.uid,"cq"),where("shop","==",id),where("proc","==",false)));
+if(CUR!==id||sn.empty)return;
+const L=sn.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(a.d)<String(b.d)?-1:1);
+S.ing=S.ing||[];let n=0;for(const e of L){if(S.ing.includes(e.id))continue;applyEntry(e);S.ing.push(e.id);n++}
+S.ing=S.ing.slice(-500);
+if(n){flush();await saveNow();render()}
+for(const e of L)updateDoc(doc(db,"users",U.uid,"cq",e.id),{proc:true}).catch(()=>{});
+}catch(e){}finally{ingBusy=false}}
+const obKey=()=>"dkob_"+U.uid;
+const obGet=()=>{try{return JSON.parse(localStorage.getItem(obKey()))||[]}catch(e){return[]}};
+function rebuildCash(){const all=[...OWN,...obGet().map(o=>({id:o.id,...o.e}))];all.sort((a,b)=>String(a.d)<String(b.d)?1:-1);const seen=new Set(),L=all.filter(e=>{if(seen.has(e.id))return false;seen.add(e.id);return true});
+S.rcs=L.slice(0,100).map(e=>({no:e.no,d:e.d,cust:e.cust,tel:e.tel,it:e.it,sub:e.sub,disc:e.disc,tot:e.tot,pd:e.pd,rem:e.rem,pay:e.pay}));
+S.sales=[];L.slice().reverse().forEach(e=>e.it.forEach(x=>S.sales.push({d:String(e.d).slice(0,10),item:x.item,q:x.q,c:0,p:x.p*(e.sub>0?e.tot/e.sub:1)})))}
+async function loadOwn(){try{const sn=await getDocs(query(collection(db,"users",CASH.owner,"cq"),where("by","==",U.uid)));OWN=sn.docs.map(d=>({id:d.id,...d.data()}));localStorage.setItem("dkown_"+U.uid,JSON.stringify(OWN.slice(0,150)))}catch(e){try{OWN=JSON.parse(localStorage.getItem("dkown_"+U.uid))||[]}catch(_){OWN=[]}}rebuildCash()}
+async function flushOb(){const ob=obGet();if(!ob.length)return;let ok=0;for(const o of ob){try{await setDoc(doc(db,"users",CASH.owner,"cq",o.id),o.e);ok++;OWN.unshift({id:o.id,...o.e});localStorage.setItem(obKey(),JSON.stringify(obGet().filter(z=>z.id!==o.id)))}catch(e){if(e&&e.code==="permission-denied"){setSt("⛔ Ma haysatid ogolaansho, la xiriir mulkiilaha");}else setSt("⚠ Internet ma jiro: iibka waa la kaydiyay, waa la dirayaa marka internet yimaado");break}}rebuildCash();if(ok)setSt("☁ La diray "+new Date().toLocaleTimeString());render()}
+async function cashInit(c){CASH={...c,uid:U.uid};CM=true;tab="sales";S={...empty(),shop:c.shopName||""};SH=[{id:"main",name:""}];CAT=[];CART=[];RC=null;CF={n:"",t:"",pay:"Cash",paid:"",dc:""};
+try{const d=await getDoc(doc(db,"users",c.owner,"pub",c.shop));if(d.exists()){CAT=d.data().items||[];if(d.data().shop)S.shop=d.data().shop;localStorage.setItem("dkcat_"+U.uid,JSON.stringify(d.data()))}}catch(e){try{const d=JSON.parse(localStorage.getItem("dkcat_"+U.uid));if(d){CAT=d.items||[];if(d.shop)S.shop=d.shop}}catch(_){}}
+S.stock=CAT.map(x=>({item:x.n,in:0}));
+await loadOwn();render();flushOb()}
+async function loadCashiers(){try{const sn=await getDocs(query(collection(db,"cashiers"),where("owner","==",U.uid),where("shop","==",CUR)));CASHL=sn.docs.map(d=>({uid:d.id,...d.data()}));render()}catch(e){}}
+onAuthStateChanged(auth,async u=>{U=u;ready=true;if(!u){S=empty();CASH=null;return render()}
+CASH=null;let cj=null;
+try{const c=await getDoc(doc(db,"cashiers",u.uid));if(c.exists()&&c.data().active!==false){cj=c.data();localStorage.setItem("dkrole_"+u.uid,JSON.stringify(cj))}else localStorage.removeItem("dkrole_"+u.uid)}catch(e){try{cj=JSON.parse(localStorage.getItem("dkrole_"+u.uid))}catch(_){}}
+if(cj)return cashInit(cj);
+if(!window._ing)window._ing=setInterval(()=>{if(U&&!CASH&&!CM&&document.visibilityState==="visible")ingest()},60000);
 SH=[{id:"main",name:""}];try{const l=JSON.parse(localStorage.getItem("dkm_"+u.uid));if(Array.isArray(l)&&l.length)SH=l}catch(e){}
 let c=localStorage.getItem("dkc_"+u.uid)||"main";if(!SH.some(x=>x.id===c))c="main";
 CM=localStorage.getItem("dkcm_"+u.uid)==="1";SUB={end:0,paid:false,unk:true};loadShop(c);loadSub();
@@ -113,11 +147,11 @@ async reset(){const e=v("em").trim();if(!e){err="Marka hore geli email-kaaga";re
 try{await sendPasswordResetEmail(auth,e);err="Waxaan u dirnay email dib u dejin ah"}catch(x){err=AE[x.code]||x.code}render()},
 sw(){mode=mode==="in"?"up":"in";err="";render()},
 out(){if(confirm("Ka bax akoonka?"))signOut(auth)},
-tab(t){tab=t;render();scrollTo(0,0)},
+tab(t){tab=t;render();scrollTo(0,0);if(t==="me"&&!CM)loadCashiers()},
 del(k,i){if(confirm("Tirtir?")){S[k].splice(i,1);save();render()}},
 sale(){const item=v("si").trim(),q=n("sq"),c=n("sc"),p=n("sp");if(!item||q<=0||p<=0)return alert("Geli magaca, tirada iyo qiimaha iibka");
 const cr=$("#scr")&&$("#scr").checked,cn=$("#scn")?v("scn").trim():"";if(cr&&!cn)return alert("Geli magaca macmiilka deynta");S.sales.push({d:today(),item,q,c,p,cr:cr?1:0});if(cr)S.debts.push({d:today(),nm:cn,tel:"",a:p*q,pf:(p-c)*q,paid:false});if(!S.stock.some(x=>x.item.toLowerCase()===item.toLowerCase()))S.stock.push({item,in:0});save();render()},
-fill(){const l=[...S.sales].reverse().find(x=>x.item.toLowerCase()===v("si").trim().toLowerCase());if(l){if(!v("sc"))$("#sc").value=l.c;if(!v("sp"))$("#sp").value=l.p}},
+fill(){if(CASH){const c=CAT.find(x=>x.n.toLowerCase()===v("si").trim().toLowerCase());if(c&&c.p&&!v("sp"))$("#sp").value=c.p;return}const l=[...S.sales].reverse().find(x=>x.item.toLowerCase()===v("si").trim().toLowerCase());if(l){if(!v("sc"))$("#sc").value=l.c;if(!v("sp"))$("#sp").value=l.p}},
 stock(){const item=v("ki").trim(),q=n("kq");if(!item||q<=0)return alert("Geli magaca iyo tirada");const f=S.stock.find(x=>x.item.toLowerCase()===item.toLowerCase());f?f.in+=q:S.stock.push({item,in:q});save();render()},
 exp(){const a=n("ea");if(a<=0)return alert("Geli qiimaha");S.exp.push({d:today(),cat:v("ec"),note:v("en"),a});save();render()},
 debt(){const a=n("da"),nm=v("dn").trim();if(a<=0||!nm)return alert("Geli magaca iyo qaddarka");S.debts.push({d:today(),nm,tel:v("dt"),a,pf:n("dp"),paid:false});save();render()},
@@ -145,7 +179,7 @@ cc(){if($("#cn")){CF.n=v("cn").trim();CF.t=v("ct").trim();CF.pay=v("cp");CF.paid
 ca(){A.cc();const item=v("si").trim(),q=n("sq"),c=n("sc"),p=n("sp");if(!item||q<=0||p<=0)return alert("Geli magaca, tirada iyo qiimaha iibka");CART.push({item,q,c,p});render()},
 cr(i){A.cc();CART.splice(i,1);render()},
 cx(){if(confirm("Madhi alaabta?")){CART=[];render()}},
-fin(){A.cc();if(!CART.length)return alert("Ku dar alaab marka hore");
+fin(){A.cc();if(!CART.length)return alert("Ku dar alaab marka hore");if(CASH)return A.cfin();
 const sub=sum(CART,x=>x.p*x.q),dc=Math.min(sub,Math.max(0,Math.round((parseFloat(CF.dc)||0)*100)/100)),tot=Math.round((sub-dc)*100)/100,f=sub>0?tot/sub:1,pd=CF.paid===""?tot:Math.min(tot,Math.max(0,parseFloat(CF.paid)||0)),rem=Math.round((tot-pd)*100)/100;
 if(rem>0&&!CF.n)return alert("Geli magaca macmiilka (waa deyn)");
 const gp=sum(CART,x=>(x.p*f-x.c)*x.q);
@@ -189,12 +223,28 @@ return`<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:30;d
 <button onclick="A.bq()" style="background:#0b4f57;color:#fff;margin-top:10px">✔ Xaqiiji bixinta</button><button onclick="A.bj()" style="background:#e2eef0;color:#0b4f57">Jooji</button></div></div>`};
 Object.assign(A,{dsc(){const sub=sum(CART,x=>x.p*x.q),d=Math.min(sub,Math.max(0,n("cdc")));$("#gt").textContent=m(sub-d)}});
 const hp=async s=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode("dk"+s)))].map(b=>b.toString(16).padStart(2,"0")).join("");
-const cmh=()=>`<header><div style="flex:1;min-width:0"><b>${esc(S.shop||"Dukaanka")}</b><small id="st">${esc(st)}</small></div><button onclick="A.cmOff()" style="width:auto;margin:0;padding:8px 12px;background:rgba(255,255,255,.18)">🔒 Casher</button></header>`;
+const cmh=()=>`<header><div style="flex:1;min-width:0"><b>${esc(S.shop||"Dukaanka")}</b><small id="st">${esc(st)}</small></div>${CASH?`<button onclick="A.out()" style="width:auto;margin:0;padding:8px 12px;background:rgba(255,255,255,.18)">Ka bax</button>`:`<button onclick="A.cmOff()" style="width:auto;margin:0;padding:8px 12px;background:rgba(255,255,255,.18)">🔒 Casher</button>`}</header>`;
 Object.assign(A,{
 async cmOn(){if(!S.pin){const p=prompt("Dooro PIN casher (4 ilaa 6 lambar). Waxaad u baahan doontaa si aad uga baxdo.");if(p===null)return;if(!/^\d{4,6}$/.test(p))return alert("PIN waa inuu ahaadaa 4 ilaa 6 lambar");S.pin=await hp(p);save()}
 if(!confirm("Taleefankan wuxuu noqonayaa CASHER (Iibka iyo Rasiidka kaliya). Si aad uga baxdo waxaad u baahan tahay PIN. Sii wad?"))return;localStorage.setItem("dkcm_"+U.uid,"1");CM=true;tab="sales";render()},
 async cmOff(){const p=prompt("Geli PIN-ka si aad uga baxdo casher mode");if(p===null)return;if(await hp(p)===S.pin){localStorage.removeItem("dkcm_"+U.uid);CM=false;tab="dash";render()}else alert("PIN waa khalad")},
 async cmPin(){const o=prompt("Geli PIN-ka hadda");if(o===null)return;if(await hp(o)!==S.pin)return alert("PIN waa khalad");const p=prompt("PIN cusub (4 ilaa 6 lambar)");if(p===null)return;if(!/^\d{4,6}$/.test(p))return alert("PIN waa inuu ahaadaa 4 ilaa 6 lambar");S.pin=await hp(p);save();alert("PIN waa la beddelay")}});
+Object.assign(A,{
+async cadd(){const name=(prompt("Magaca casher-ka")||"").trim();if(!name)return;const email=(prompt("Email-ka casher-ka")||"").trim().toLowerCase();if(!/^\S+@\S+\.\S+$/.test(email))return alert("Email-ku sax ma aha");const pw=prompt("Password u dooro casher-ka (ugu yaraan 6 xaraf)");if(!pw||pw.length<6)return alert("Password-ku waa inuu ahaado 6 xaraf ama ka badan");
+let sa;try{const ex=getApps().find(a=>a.name==="sec");sa=getAuth(ex||initializeApp(cfg,"sec"))}catch(e){return alert("Khalad dhacay, isku day mar kale")}
+let cu;try{cu=(await createUserWithEmailAndPassword(sa,email,pw)).user}catch(x){if(x.code==="auth/email-already-in-use"){try{cu=(await signInWithEmailAndPassword(sa,email,pw)).user}catch(y){return alert("Email-kan horey ayaa loo isticmaalay. Geli password-kii hore ama email kale.")}}else return alert(AE[x.code]||x.code)}
+const code="C"+(CASHL.length+1);
+try{await setDoc(doc(db,"cashiers",cu.uid),{owner:U.uid,shop:CUR,shopName:S.shop||"",name,email,code,active:true,t:Date.now()})}catch(e){try{await signOut(sa)}catch(_){}return alert("Lama keydin karin ("+(e.code||"khalad")+"). Hubi in Rules-ka cusub la daabacay.")}
+try{await signOut(sa)}catch(_){}
+pub(CUR);await loadCashiers();alert("Casher waa la daray.\nEmail: "+email+"\nPassword: "+pw+"\nU sheeg inuu ku galo link-ga app-ka.")},
+async cdel(id){if(!confirm("Tirtir casher-kan? Isla markiiba wuu xirmayaa."))return;try{await deleteDoc(doc(db,"cashiers",id))}catch(e){return alert("Lama tirtiri karo")}await loadCashiers()},
+async cfin(){const sub=sum(CART,x=>x.p*x.q),dc=Math.min(sub,Math.max(0,Math.round((parseFloat(CF.dc)||0)*100)/100)),tot=Math.round((sub-dc)*100)/100,pd=CF.paid===""?tot:Math.min(tot,Math.max(0,parseFloat(CF.paid)||0)),rem=Math.round((tot-pd)*100)/100;
+if(rem>0&&!CF.n)return alert("Geli magaca macmiilka (waa deyn)");
+const key="dkcn_"+U.uid;const nn=Math.max(+localStorage.getItem(key)||0,OWN.length+obGet().length)+1;localStorage.setItem(key,nn);
+const id=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const e={id,by:U.uid,shop:CASH.shop,cn:CASH.name,no:(CASH.code||"C")+"-"+nn,d:new Date().toISOString(),cust:CF.n,tel:CF.t,it:CART.map(x=>({item:x.item,q:x.q,p:x.p})),sub,disc:dc,tot,pd,rem,pay:CF.pay,proc:false};
+localStorage.setItem(obKey(),JSON.stringify([...obGet(),{id,e}]));
+CART=[];CF={n:"",t:"",pay:CF.pay,paid:"",dc:""};rebuildCash();RC=S.rcs.find(r=>r.no===e.no)||null;render();flushOb()}});
 Object.assign(window,{A});
 const T=[["dash","📊","Kooban"],["sales","🛒",'<span class="I">I</span>ibka'],["stock","📦","Keyd"],["exp","💸","Qarash"],["debt","📒","Deyn"],["inv","🧾","Rasiid"],["me","👤","Aniga"]];
 const dl=()=>`<datalist id="dl">${S.stock.map(x=>`<option value="${esc(x.item)}">`).join("")}</datalist>`;
@@ -219,7 +269,7 @@ debt(){return`<div class="card"><h3>Deyn cusub (dukaanka lagu leeyahay)</h3><inp
 <div class="card"><h3>Deymaha dukaanka lagu leeyahay</h3>${S.debts.length?S.debts.map((x,i)=>`<div class="row"><div>${esc(x.nm)}<small>${x.d} ${esc(x.tel)}${x.pf?" · faa'iido "+m(x.pf):""}${x.a0&&!x.paid?" · hore "+m(x.a0):""}</small></div><div><b>${m(x.paid?(x.a0||x.a):x.a)}</b> ${x.paid?'<span class="chip">La bixiyay ✓</span>':`<button class="s" onclick="A.bx(${i})">Bixi</button>`} <button class="s g" onclick="A.del('debts',${i})">✕</button></div></div>`).join(""):none("Deyn ma jiro.")}</div>`},
 me(){return`<div class="card"><h3>Dukaanka</h3><input id="sn" placeholder="Magaca dukaanka" value="${esc(S.shop)}"><input id="sl" type="number" placeholder="Digniinta keydka yar (tirada)" value="${S.lim}"><button onclick="A.prof()">Keydi</button></div>
 <div class="card"><h3>Akoonka</h3><div class="row"><span>${esc(U.email)}</span></div><button class="g" onclick="A.out()">Ka bax</button></div>
-<div class="card"><h3>Backup faylka</h3><button class="g" onclick="A.dl()">Soo deji Backup</button><input type="file" accept=".json" onchange="A.rf(this)"></div>${CUR!=="main"?`<div class="card"><h3>Tirtir dukaanka</h3><button class="g" style="color:var(--bad)" onclick="A.dsh()">Tirtir dukaankan</button></div>`:""}<div class="card"><h3>Casher</h3><p style="margin:0 0 8px;color:var(--mut);font-size:14px">Casher wuxuu arki karaa kaliya <b>Iibka</b> iyo <b>Rasiidka</b>. Ma arko faa'iidada, qarashka, keydka iyo deynta. Taleefankan ayaa noqonaya casher, waxaadna ka bixi doontaa PIN.</p><button onclick="A.cmOn()">Daar Casher mode</button>${S.pin?`<button class="g" onclick="A.cmPin()">Beddel PIN</button>`:""}</div><div class="card"><h3>Macluumaad</h3><div class="row"><a href="privacy.html" target="_blank">Siyaasadda Asturnaanta</a></div><div class="row"><span>Xiriir</span><a href="mailto:faysaladan091@gmail.com">faysaladan091@gmail.com</a></div></div>`}};
+<div class="card"><h3>Backup faylka</h3><button class="g" onclick="A.dl()">Soo deji Backup</button><input type="file" accept=".json" onchange="A.rf(this)"></div>${CUR!=="main"?`<div class="card"><h3>Tirtir dukaanka</h3><button class="g" style="color:var(--bad)" onclick="A.dsh()">Tirtir dukaankan</button></div>`:""}<div class="card"><h3>Casheerrada (akoon gooni ah)</h3>${CASHL.length?CASHL.map(c=>`<div class="row"><div>${esc(c.name)}<small>${esc(c.email)} · ${esc(c.code||"")}</small></div><button class="s g" onclick="A.cdel('${c.uid}')">Tirtir</button></div>`).join(""):none("Casher ma jiro.")}<button onclick="A.cadd()">+ Ku dar casher</button><p style="margin:8px 0 0;color:var(--mut);font-size:13px">Casher wuxuu ku soo gelayaa email iyo password adigu bixiyay, wuxuuna arkaa kaliya Iibka iyo Rasiidka dukaankan. Marka aad Tirtirto, isla markiiba wuu xirmaa.</p></div><div class="card"><h3>Casher mode (taleefankan)</h3><p style="margin:0 0 8px;color:var(--mut);font-size:14px">Casher wuxuu arki karaa kaliya <b>Iibka</b> iyo <b>Rasiidka</b>. Ma arko faa'iidada, qarashka, keydka iyo deynta. Taleefankan ayaa noqonaya casher, waxaadna ka bixi doontaa PIN.</p><button onclick="A.cmOn()">Daar Casher mode</button>${S.pin?`<button class="g" onclick="A.cmPin()">Beddel PIN</button>`:""}</div><div class="card"><h3>Macluumaad</h3><div class="row"><a href="privacy.html" target="_blank">Siyaasadda Asturnaanta</a></div><div class="row"><span>Xiriir</span><a href="mailto:faysaladan091@gmail.com">faysaladan091@gmail.com</a></div></div>`}};
 function render(){if(!ready)return;
 if(!U){app.innerHTML=`<div class="au"><h1>Dukaanka</h1><p>Xisaabta dukaankaaga, meel kasta ka hel.</p><input id="em" type="email" placeholder="Email" autocomplete="email"><input id="pw" type="password" placeholder="Password" autocomplete="current-password"><div class="err">${esc(err)}</div>
 <button onclick="A.go()">${mode==="up"?"Samee akoon":"Gal"}</button><button class="g" onclick="A.google()">Ku gal Google</button><button class="lnk" onclick="A.sw()">${mode==="up"?"Akoon ayaan leeyahay":"Akoon cusub samee"}</button>${mode==="in"?`<button class="lnk" onclick="A.reset()">Password-ka ma xasuusnid</button>`:""}</div>`;return}
